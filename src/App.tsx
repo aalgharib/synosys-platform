@@ -12,6 +12,7 @@ import { useRef, useState, type ChangeEvent } from "react";
 import Dashboard from "./components/Dashboard";
 import PosterCreator from "./components/PosterCreator";
 import YoutubeThumbnailCreator from "./components/YoutubeThumbnailCreator";
+import { defaultBranding } from "./defaults";
 import type { Branding, Tool } from "./types/platform";
 
 export default function App() {
@@ -21,10 +22,7 @@ export default function App() {
   const profilePicInputRef = useRef<HTMLInputElement | null>(null);
   const currentYear = new Date().getFullYear();
 
-  const [branding, setBranding] = useState<Branding>({
-    platformLogo: null,
-    profilePic: "https://api.dicebear.com/7.x/avataaars/svg?seed=Ali",
-  });
+  const [branding, setBranding] = useState<Branding>(defaultBranding);
 
   const tools: Tool[] = [
     {
@@ -107,7 +105,7 @@ export default function App() {
                 <img
                   src={branding.platformLogo}
                   alt="Logo"
-                  className="h-8 w-auto"
+                  className="h-10 w-auto"
                 />
               ) : (
                 <>
@@ -212,7 +210,7 @@ export default function App() {
           </div>
         </div>
         <footer className="border-t border-slate-200 bg-white/80 px-8 py-4 text-center text-sm text-slate-500">
-          Copyright © {currentYear} SynoSys. All rights reserved.
+          Copyright (c) {currentYear} SynoSys. All rights reserved.
         </footer>
       </main>
     </div>

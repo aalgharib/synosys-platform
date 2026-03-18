@@ -85,11 +85,21 @@ npm run build
 ## Project Structure
 
 ```text
+public/
+  branding/
+    platform-logo.svg
+    profile-pic.svg
+    poster-logo.svg
+    poster-qr.svg
+    poster-bg.svg
+    youtube-logo.svg
+    youtube-bg.svg
 src/
   components/
     Dashboard.tsx
     PosterCreator.tsx
     YoutubeThumbnailCreator.tsx
+  defaults.ts
   hooks/
     useImageExport.ts
   types/
@@ -97,6 +107,33 @@ src/
   App.tsx
   main.tsx
 ```
+
+## Changing Default Setup
+
+All default content is now centralized in:
+
+`src/defaults.ts`
+
+This file controls:
+
+- default platform logo
+- default profile image
+- default poster logo
+- default poster QR code
+- default poster background
+- default poster text, sizes, alignment, and positions
+- default YouTube logo
+- default YouTube background
+- default YouTube text, sizes, glow, alignment, and colors
+
+Default image assets are stored in:
+
+`public/branding`
+
+To change the default setup:
+
+1. Replace the files inside `public/branding`
+2. Update any paths or values in `src/defaults.ts`
 
 ## Notes
 

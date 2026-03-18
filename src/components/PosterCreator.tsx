@@ -1,72 +1,18 @@
 import { Download } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { defaultPosterConfig, defaultPosterImages } from "../defaults";
 import { useImageExport } from "../hooks/useImageExport";
-
-type PosterTextAlign = "left" | "center" | "right";
+import type {
+  PosterConfig,
+  PosterImages,
+  PosterTextAlign,
+} from "../types/platform";
 type PosterDragTarget = "headline" | "message" | "footer" | null;
 
-interface PosterConfig {
-  accentColor: string;
-  opacity: number;
-  topLine1: string;
-  topLine2: string;
-  middleLine1: string;
-  middleLine2: string;
-  footerName: string;
-  footerTagline: string;
-  footerEmail: string;
-  footerPhone: string;
-  footerWeb: string;
-  fontFamily: string;
-  textAlign: PosterTextAlign;
-  topLine1Size: number;
-  topLine2Size: number;
-  middleLine1Size: number;
-  middleLine2Size: number;
-  footerNameSize: number;
-  footerMetaSize: number;
-  headlinePos: { x: number; y: number };
-  messagePos: { x: number; y: number };
-  footerPos: { x: number; y: number };
-}
-
-interface PosterImages {
-  logo: string;
-  qr: string;
-  bg: string;
-}
-
 export default function PosterCreator() {
-  const [config, setConfig] = useState<PosterConfig>({
-    accentColor: "#f4b400",
-    opacity: 82,
-    topLine1: "STOP LOSING CLIENTS",
-    topLine2: "YOU ALREADY PAID TO ATTRACT",
-    middleLine1: "Most businesses don't have a lead problem.",
-    middleLine2: "They have a follow-up problem.",
-    footerName: "AI Automation by SynoSys",
-    footerTagline: "Answer - Qualify - Route 24/7",
-    footerEmail: "Ali@synosys.io",
-    footerPhone: "519-991-4046",
-    footerWeb: "synosys.io",
-    fontFamily: '"Space Grotesk", system-ui, sans-serif',
-    textAlign: "left",
-    topLine1Size: 42,
-    topLine2Size: 28,
-    middleLine1Size: 18,
-    middleLine2Size: 24,
-    footerNameSize: 22,
-    footerMetaSize: 11,
-    headlinePos: { x: 50, y: 18 },
-    messagePos: { x: 50, y: 44 },
-    footerPos: { x: 41, y: 75 },
-  });
+  const [config, setConfig] = useState<PosterConfig>(defaultPosterConfig);
 
-  const [images, setImages] = useState<PosterImages>({
-    logo: "https://placehold.co/420x110/FFFFFF/031630?text=SynoSys",
-    qr: "https://placehold.co/160x160/FFFFFF/000000?text=QR",
-    bg: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80",
-  });
+  const [images, setImages] = useState<PosterImages>(defaultPosterImages);
 
   const [isExporting, setIsExporting] = useState(false);
   const [dragTarget, setDragTarget] = useState<PosterDragTarget>(null);

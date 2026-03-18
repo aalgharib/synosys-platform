@@ -6,30 +6,14 @@ import {
   User,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { defaultThumbnailConfig, defaultThumbnailImages } from "../defaults";
 import { useImageExport } from "../hooks/useImageExport";
 import type { ImageConfig, ThumbnailConfig } from "../types/platform";
 
 export default function YoutubeThumbnailCreator() {
-  const [config, setConfig] = useState<ThumbnailConfig>({
-    accentColor: "#FF0000",
-    backgroundColor: "#020617",
-    opacity: 40,
-    mainHook: "THE ULTIMATE AI",
-    glowHook: "SECRET",
-    fontFamily: '"Space Grotesk", system-ui, sans-serif',
-    glowIntensity: 20,
-    mainFontSize: 72,
-    glowFontSize: 96,
-    logoPosition: "left",
-    textAlign: "right",
-    textPos: { x: 75, y: 50 },
-  });
+  const [config, setConfig] = useState<ThumbnailConfig>(defaultThumbnailConfig);
 
-  const [images, setImages] = useState<ImageConfig>({
-    logo: "https://placehold.co/400x100/FFFFFF/031630?text=SynoSys",
-    bg: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=1280&q=80",
-    person: null,
-  });
+  const [images, setImages] = useState<ImageConfig>(defaultThumbnailImages);
 
   const [isExporting, setIsExporting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
