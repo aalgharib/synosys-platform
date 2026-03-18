@@ -99,9 +99,9 @@ export default function YoutubeThumbnailCreator() {
   }, [isDragging]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      <div className="lg:col-span-5 space-y-6">
-        <div className="bg-card p-6 rounded-3xl shadow-sm border border-border space-y-6">
+    <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
+      <div className="lg:col-span-5">
+        <div className="bg-card p-6 rounded-3xl shadow-sm border border-border space-y-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
           <section className="space-y-4">
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2 border-b border-border/70 pb-2">
               <Upload size={16} className="text-red-500" /> Media & Layout
@@ -390,15 +390,15 @@ export default function YoutubeThumbnailCreator() {
               exportElement(thumbRef, "YT-Thumbnail", setIsExporting)
             }
             disabled={isExporting}
-            className="button-primary w-full py-4 font-bold shadow-lg active:scale-95"
+            className="button-primary sticky bottom-0 w-full py-4 font-bold shadow-lg active:scale-95"
           >
             {isExporting ? "Exporting..." : "Download Thumbnail"}
           </button>
         </div>
       </div>
 
-      <div className="lg:col-span-7">
-        <div className="sticky top-8">
+      <div className="flex items-center justify-center lg:col-span-7 lg:sticky lg:top-8">
+        <div className="w-full">
           <div className="shadow-2xl rounded-2xl overflow-hidden bg-black">
             <div
               ref={thumbRef}
