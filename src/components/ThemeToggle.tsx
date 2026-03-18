@@ -16,7 +16,7 @@ export default function ThemeToggle() {
   const { theme, resolvedTheme, setTheme } = useTheme();
 
   return (
-    <div className="inline-flex items-center gap-1 rounded-2xl border border-border/80 bg-card/90 p-1 text-card-foreground shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+    <div className="mx-auto flex w-full items-center justify-center rounded-2xl border border-border/80 bg-card/90 p-1 text-card-foreground shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
       {themeOptions.map(({ label, mode, icon: Icon }) => {
         const isActive = theme === mode;
 
@@ -25,7 +25,7 @@ export default function ThemeToggle() {
             key={mode}
             type="button"
             onClick={() => setTheme(mode)}
-            className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               isActive
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -34,7 +34,7 @@ export default function ThemeToggle() {
             aria-label={`Switch theme to ${label.toLowerCase()}`}
           >
             <Icon className="h-4 w-4" />
-            <span className="hidden sm:inline">{label}</span>
+            <span>{label}</span>
           </button>
         );
       })}

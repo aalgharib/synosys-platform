@@ -57,7 +57,7 @@ export default function Dashboard({ tools, onNavigate }: DashboardProps) {
                 className={`mb-6 flex h-14 w-14 items-center justify-center rounded-2xl transition-colors ${
                   tool.id === "youtube"
                     ? "bg-red-500/10 text-red-500 group-hover:bg-red-500 group-hover:text-white"
-                    : "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground"
+                    : "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white"
                 }`}
               >
                 {tool.icon}
