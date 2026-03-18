@@ -101,49 +101,49 @@ export default function YoutubeThumbnailCreator() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
       <div className="lg:col-span-5 space-y-6">
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-6">
+        <div className="bg-card p-6 rounded-3xl shadow-sm border border-border space-y-6">
           <section className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-2">
-              <Upload size={16} className="text-red-600" /> Media & Layout
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2 border-b border-border/70 pb-2">
+              <Upload size={16} className="text-red-500" /> Media & Layout
             </h3>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-slate-500">
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground">
                     Brand Logo
                   </label>
                   <input
                     type="file"
                     onChange={(event) => handleImageUpload(event, "logo")}
-                    className="text-[10px] w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-red-50 file:text-red-700"
+                    className="text-[10px] w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-red-500/10 file:text-red-500"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 flex items-center gap-1">
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
                     <User size={10} /> Person Cutout
                   </label>
                   <input
                     type="file"
                     onChange={(event) => handleImageUpload(event, "person")}
-                    className="text-[10px] w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-red-50 file:text-red-700"
+                    className="text-[10px] w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-red-500/10 file:text-red-500"
                   />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-slate-500">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground">
                   Background Image
                 </label>
                 <input
                   type="file"
                   onChange={(event) => handleImageUpload(event, "bg")}
-                  className="text-[10px] w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-900 file:text-white"
+                  className="text-[10px] w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-950 file:text-white"
                 />
               </div>
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[10px] font-bold uppercase text-slate-500">
+              <div className="flex items-center justify-between p-3 bg-muted/40 rounded-xl border border-border/70">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground">
                   Logo Position
                 </span>
-                <div className="flex bg-white rounded-lg p-1 shadow-sm border border-slate-200">
+                <div className="flex bg-card rounded-lg p-1 shadow-sm border border-border">
                   <button
                     onClick={() =>
                       setConfig((previous) => ({
@@ -153,8 +153,8 @@ export default function YoutubeThumbnailCreator() {
                     }
                     className={`p-1.5 rounded-md transition-all ${
                       config.logoPosition === "left"
-                        ? "bg-red-600 text-white"
-                        : "text-slate-400 hover:text-slate-600"
+                        ? "bg-red-500 text-white"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <AlignLeft size={14} />
@@ -168,8 +168,8 @@ export default function YoutubeThumbnailCreator() {
                     }
                     className={`p-1.5 rounded-md transition-all ${
                       config.logoPosition === "right"
-                        ? "bg-red-600 text-white"
-                        : "text-slate-400 hover:text-slate-600"
+                        ? "bg-red-500 text-white"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <AlignRight size={14} />
@@ -180,13 +180,13 @@ export default function YoutubeThumbnailCreator() {
           </section>
 
           <section className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-2">
-              <Type size={16} className="text-red-600" /> Typography
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2 border-b border-border/70 pb-2">
+              <Type size={16} className="text-red-500" /> Typography
             </h3>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                  <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">
                     Text Color
                   </label>
                   <input
@@ -198,7 +198,7 @@ export default function YoutubeThumbnailCreator() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                  <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">
                     Background Color
                   </label>
                   <input
@@ -215,18 +215,18 @@ export default function YoutubeThumbnailCreator() {
                 name="mainHook"
                 value={config.mainHook}
                 onChange={handleInputChange}
-                className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold uppercase"
+                className="input-base rounded-xl bg-muted/40 px-3 py-2.5 font-bold uppercase"
               />
               <input
                 type="text"
                 name="glowHook"
                 value={config.glowHook}
                 onChange={handleInputChange}
-                className="w-full p-2.5 bg-slate-50 border rounded-xl font-black uppercase italic"
+                className="input-base rounded-xl bg-muted/40 px-3 py-2.5 font-black uppercase italic"
                 style={{ color: config.accentColor }}
               />
               <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">
                   Font Family
                 </label>
                 <select
@@ -238,7 +238,7 @@ export default function YoutubeThumbnailCreator() {
                       fontFamily: event.target.value,
                     }))
                   }
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl text-sm"
+                  className="input-base rounded-xl bg-muted/40 px-3 py-2.5 text-sm"
                 >
                   <option value='"Space Grotesk", system-ui, sans-serif'>
                     Space Grotesk
@@ -256,10 +256,10 @@ export default function YoutubeThumbnailCreator() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">
                   Text Align
                 </label>
-                <div className="flex bg-slate-50 rounded-xl p-1 border border-slate-200">
+                <div className="flex bg-muted/40 rounded-xl p-1 border border-border">
                   <button
                     type="button"
                     onClick={() =>
@@ -270,8 +270,8 @@ export default function YoutubeThumbnailCreator() {
                     }
                     className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition ${
                       config.textAlign === "left"
-                        ? "bg-red-600 text-white"
-                        : "text-slate-500 hover:text-slate-700"
+                        ? "bg-red-500 text-white"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     Left
@@ -286,8 +286,8 @@ export default function YoutubeThumbnailCreator() {
                     }
                     className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition ${
                       config.textAlign === "center"
-                        ? "bg-red-600 text-white"
-                        : "text-slate-500 hover:text-slate-700"
+                        ? "bg-red-500 text-white"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     Center
@@ -302,8 +302,8 @@ export default function YoutubeThumbnailCreator() {
                     }
                     className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition ${
                       config.textAlign === "right"
-                        ? "bg-red-600 text-white"
-                        : "text-slate-500 hover:text-slate-700"
+                        ? "bg-red-500 text-white"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     Right
@@ -312,7 +312,7 @@ export default function YoutubeThumbnailCreator() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                  <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">
                     Main Font Size
                   </label>
                   <input
@@ -324,12 +324,12 @@ export default function YoutubeThumbnailCreator() {
                     onChange={handleInputChange}
                     className="w-full mt-2 accent-red-600"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-muted-foreground mt-1">
                     {config.mainFontSize}px
                   </p>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                  <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">
                     Glow Font Size
                   </label>
                   <input
@@ -341,14 +341,14 @@ export default function YoutubeThumbnailCreator() {
                     onChange={handleInputChange}
                     className="w-full mt-2 accent-red-600"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-muted-foreground mt-1">
                     {config.glowFontSize}px
                   </p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                  <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">
                     Glow Amount
                   </label>
                   <input
@@ -360,12 +360,12 @@ export default function YoutubeThumbnailCreator() {
                     onChange={handleInputChange}
                     className="w-full mt-2 accent-red-600"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-muted-foreground mt-1">
                     {config.glowIntensity}px
                   </p>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                  <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">
                     Dim Overlay
                   </label>
                   <input
@@ -377,7 +377,7 @@ export default function YoutubeThumbnailCreator() {
                     onChange={handleInputChange}
                     className="w-full mt-2 accent-red-600"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-muted-foreground mt-1">
                     {config.opacity}%
                   </p>
                 </div>
@@ -390,7 +390,7 @@ export default function YoutubeThumbnailCreator() {
               exportElement(thumbRef, "YT-Thumbnail", setIsExporting)
             }
             disabled={isExporting}
-            className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg transition-all active:scale-95"
+            className="button-primary w-full py-4 font-bold shadow-lg active:scale-95"
           >
             {isExporting ? "Exporting..." : "Download Thumbnail"}
           </button>
@@ -402,7 +402,7 @@ export default function YoutubeThumbnailCreator() {
           <div className="shadow-2xl rounded-2xl overflow-hidden bg-black">
             <div
               ref={thumbRef}
-              className="w-full aspect-video relative bg-slate-900 bg-cover bg-center overflow-hidden"
+              className="w-full aspect-video relative bg-slate-950 bg-cover bg-center overflow-hidden"
               style={{
                 backgroundColor: config.backgroundColor,
                 backgroundImage: `url('${images.bg}')`,

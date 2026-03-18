@@ -135,59 +135,59 @@ export default function PosterCreator() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-      <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-200 space-y-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
+      <div className="bg-card p-6 rounded-3xl shadow-xl border border-border space-y-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Poster Creator</h2>
-          <p className="text-slate-500 text-sm">
+          <h2 className="text-2xl font-bold text-foreground">Poster Creator</h2>
+          <p className="text-muted-foreground text-sm">
             Update text, typography, and drag the text boxes on the canvas.
           </p>
         </div>
 
-        <div className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+        <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
+          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
             Asset Uploads
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-700">
+              <label className="block text-xs font-bold text-foreground">
                 Logo
               </label>
               <input
                 type="file"
                 onChange={(event) => handleImageUpload(event, "logo")}
-                className="text-xs block w-full file:bg-blue-50 file:text-blue-700 file:border-0 file:rounded-md file:px-2 file:py-1"
+                className="text-xs block w-full file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:px-2 file:py-1"
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-700">
+              <label className="block text-xs font-bold text-foreground">
                 QR Code
               </label>
               <input
                 type="file"
                 onChange={(event) => handleImageUpload(event, "qr")}
-                className="text-xs block w-full file:bg-blue-50 file:text-blue-700 file:border-0 file:rounded-md file:px-2 file:py-1"
+                className="text-xs block w-full file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:px-2 file:py-1"
               />
             </div>
           </div>
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-slate-700">
+            <label className="block text-xs font-bold text-foreground">
               Background Image
             </label>
             <input
               type="file"
               onChange={(event) => handleImageUpload(event, "bg")}
-              className="text-xs block w-full file:bg-slate-900 file:text-white file:border-0 file:rounded-md file:px-2 file:py-1"
+              className="text-xs block w-full file:bg-slate-950 file:text-white file:border-0 file:rounded-md file:px-2 file:py-1"
             />
           </div>
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
             Content & Colors
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-foreground mb-1">
                 Accent
               </label>
               <input
@@ -199,7 +199,7 @@ export default function PosterCreator() {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-foreground mb-1">
                 Dim Overlay
               </label>
               <input
@@ -209,7 +209,7 @@ export default function PosterCreator() {
                 max="100"
                 value={config.opacity}
                 onChange={handleInputChange}
-                className="w-full mt-3 accent-blue-600"
+                className="w-full mt-3 accent-primary"
               />
             </div>
           </div>
@@ -219,7 +219,7 @@ export default function PosterCreator() {
             value={config.topLine1}
             onChange={handleInputChange}
             placeholder="Headline 1"
-            className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+            className="input-base rounded-lg px-3 py-2 text-sm"
           />
           <input
             type="text"
@@ -227,7 +227,7 @@ export default function PosterCreator() {
             value={config.topLine2}
             onChange={handleInputChange}
             placeholder="Headline 2"
-            className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+            className="input-base rounded-lg px-3 py-2 text-sm"
           />
           <textarea
             name="middleLine1"
@@ -235,7 +235,7 @@ export default function PosterCreator() {
             onChange={handleInputChange}
             placeholder="Main Message"
             rows={2}
-            className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+            className="input-base rounded-lg px-3 py-2 text-sm"
           />
           <input
             type="text"
@@ -243,16 +243,16 @@ export default function PosterCreator() {
             value={config.middleLine2}
             onChange={handleInputChange}
             placeholder="Accent Message"
-            className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+            className="input-base rounded-lg px-3 py-2 text-sm"
           />
         </div>
 
-        <div className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+        <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
+          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
             Typography & Layout
           </h3>
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label className="block text-xs font-bold text-foreground mb-1">
               Font Family
             </label>
             <select
@@ -264,7 +264,7 @@ export default function PosterCreator() {
                   fontFamily: event.target.value,
                 }))
               }
-              className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
+              className="input-base rounded-lg px-3 py-2 text-sm bg-card"
             >
               <option value='"Space Grotesk", system-ui, sans-serif'>
                 Space Grotesk
@@ -280,10 +280,10 @@ export default function PosterCreator() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-2">
+            <label className="block text-xs font-bold text-foreground mb-2">
               Text Align
             </label>
-            <div className="flex bg-white rounded-xl p-1 border border-slate-200">
+            <div className="flex bg-card rounded-xl p-1 border border-border">
               {(["left", "center", "right"] as PosterTextAlign[]).map((align) => (
                 <button
                   key={align}
@@ -293,8 +293,8 @@ export default function PosterCreator() {
                   }
                   className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition ${
                     config.textAlign === align
-                      ? "bg-blue-600 text-white"
-                      : "text-slate-500 hover:text-slate-700"
+                      ? "bg-primary text-white"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {align[0].toUpperCase() + align.slice(1)}
@@ -304,7 +304,7 @@ export default function PosterCreator() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-foreground mb-1">
                 Headline Size
               </label>
               <input
@@ -314,14 +314,14 @@ export default function PosterCreator() {
                 max="64"
                 value={config.topLine1Size}
                 onChange={handleInputChange}
-                className="w-full mt-2 accent-blue-600"
+                className="w-full mt-2 accent-primary"
               />
-              <p className="text-[10px] text-slate-400 mt-1">
+              <p className="text-[10px] text-muted-foreground mt-1">
                 {config.topLine1Size}px
               </p>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-foreground mb-1">
                 Subheadline Size
               </label>
               <input
@@ -331,14 +331,14 @@ export default function PosterCreator() {
                 max="42"
                 value={config.topLine2Size}
                 onChange={handleInputChange}
-                className="w-full mt-2 accent-blue-600"
+                className="w-full mt-2 accent-primary"
               />
-              <p className="text-[10px] text-slate-400 mt-1">
+              <p className="text-[10px] text-muted-foreground mt-1">
                 {config.topLine2Size}px
               </p>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-foreground mb-1">
                 Body Size
               </label>
               <input
@@ -348,14 +348,14 @@ export default function PosterCreator() {
                 max="28"
                 value={config.middleLine1Size}
                 onChange={handleInputChange}
-                className="w-full mt-2 accent-blue-600"
+                className="w-full mt-2 accent-primary"
               />
-              <p className="text-[10px] text-slate-400 mt-1">
+              <p className="text-[10px] text-muted-foreground mt-1">
                 {config.middleLine1Size}px
               </p>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-foreground mb-1">
                 Accent Line Size
               </label>
               <input
@@ -365,14 +365,14 @@ export default function PosterCreator() {
                 max="36"
                 value={config.middleLine2Size}
                 onChange={handleInputChange}
-                className="w-full mt-2 accent-blue-600"
+                className="w-full mt-2 accent-primary"
               />
-              <p className="text-[10px] text-slate-400 mt-1">
+              <p className="text-[10px] text-muted-foreground mt-1">
                 {config.middleLine2Size}px
               </p>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-foreground mb-1">
                 Footer Title Size
               </label>
               <input
@@ -382,14 +382,14 @@ export default function PosterCreator() {
                 max="32"
                 value={config.footerNameSize}
                 onChange={handleInputChange}
-                className="w-full mt-2 accent-blue-600"
+                className="w-full mt-2 accent-primary"
               />
-              <p className="text-[10px] text-slate-400 mt-1">
+              <p className="text-[10px] text-muted-foreground mt-1">
                 {config.footerNameSize}px
               </p>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-foreground mb-1">
                 Footer Meta Size
               </label>
               <input
@@ -399,21 +399,21 @@ export default function PosterCreator() {
                 max="18"
                 value={config.footerMetaSize}
                 onChange={handleInputChange}
-                className="w-full mt-2 accent-blue-600"
+                className="w-full mt-2 accent-primary"
               />
-              <p className="text-[10px] text-slate-400 mt-1">
+              <p className="text-[10px] text-muted-foreground mt-1">
                 {config.footerMetaSize}px
               </p>
             </div>
           </div>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-muted-foreground">
             Drag the headline, message box, and footer box directly on the poster
             preview.
           </p>
         </div>
 
-        <div className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+        <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
+          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
             Footer Details
           </h3>
           <input
@@ -421,14 +421,14 @@ export default function PosterCreator() {
             name="footerName"
             value={config.footerName}
             onChange={handleInputChange}
-            className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+            className="input-base rounded-lg px-3 py-2 text-sm"
           />
           <input
             type="text"
             name="footerTagline"
             value={config.footerTagline}
             onChange={handleInputChange}
-            className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+            className="input-base rounded-lg px-3 py-2 text-sm"
           />
           <div className="grid grid-cols-3 gap-2">
             <input
@@ -436,21 +436,21 @@ export default function PosterCreator() {
               name="footerEmail"
               value={config.footerEmail}
               onChange={handleInputChange}
-              className="w-full p-1.5 border border-slate-200 rounded-lg text-[10px]"
+              className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] text-foreground"
             />
             <input
               type="text"
               name="footerPhone"
               value={config.footerPhone}
               onChange={handleInputChange}
-              className="w-full p-1.5 border border-slate-200 rounded-lg text-[10px]"
+              className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] text-foreground"
             />
             <input
               type="text"
               name="footerWeb"
               value={config.footerWeb}
               onChange={handleInputChange}
-              className="w-full p-1.5 border border-slate-200 rounded-lg text-[10px]"
+              className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] text-foreground"
             />
           </div>
         </div>
@@ -460,7 +460,7 @@ export default function PosterCreator() {
             exportElement(posterRef, "SynoSys-Poster", setIsExporting)
           }
           disabled={isExporting}
-          className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 sticky bottom-0"
+          className="button-primary sticky bottom-0 w-full py-4 font-bold shadow-lg"
         >
           <Download size={20} />
           {isExporting ? "Generating..." : "Download PNG"}
@@ -470,7 +470,7 @@ export default function PosterCreator() {
       <div className="flex items-center justify-center lg:sticky lg:top-8">
         <div
           ref={posterRef}
-          className="w-full max-w-[480px] aspect-[4/5] bg-slate-900 relative overflow-hidden shadow-2xl rounded-[24px]"
+          className="w-full max-w-[480px] aspect-[4/5] bg-slate-950 relative overflow-hidden shadow-2xl rounded-[24px]"
           style={{
             backgroundImage: `url('${images.bg}')`,
             backgroundSize: "cover",
@@ -478,7 +478,7 @@ export default function PosterCreator() {
           }}
         >
           <div
-            className="absolute inset-0 z-0 bg-slate-900"
+            className="absolute inset-0 z-0 bg-slate-950"
             style={{
               backgroundColor: `rgba(15, 23, 42, ${config.opacity / 100})`,
             }}
@@ -489,11 +489,11 @@ export default function PosterCreator() {
             <img
               src={images.logo}
               alt="Logo"
-              className="h-10 w-auto object-contain bg-white/5 p-1 rounded-md"
+              className="h-10 w-auto object-contain bg-card/5 p-1 rounded-md"
             />
           </div>
 
-          <div className="absolute top-8 right-8 z-20 rounded-full border border-white/20 bg-white/10 backdrop-blur-md px-3 py-1 text-[9px] uppercase tracking-widest font-bold text-white">
+          <div className="absolute top-8 right-8 z-20 rounded-full border border-white/20 bg-card/10 backdrop-blur-md px-3 py-1 text-[9px] uppercase tracking-widest font-bold text-white">
             AI Powered
           </div>
 
@@ -558,7 +558,7 @@ export default function PosterCreator() {
 
           <div
             onMouseDown={() => setDragTarget("footer")}
-            className={`absolute z-20 w-[62%] cursor-move rounded-[18px] border border-white/10 bg-white/10 backdrop-blur-md p-4 shadow-xl ${
+            className={`absolute z-20 w-[62%] cursor-move rounded-[18px] border border-white/10 bg-card/10 backdrop-blur-md p-4 shadow-xl ${
               dragTarget === "footer"
                 ? "ring-2 ring-blue-400/70"
                 : "hover:ring-1 hover:ring-white/20"
@@ -592,9 +592,9 @@ export default function PosterCreator() {
             </div>
           </div>
 
-          <div className="absolute right-5 bottom-5 z-20 bg-white p-1.5 rounded-lg shadow-2xl">
+          <div className="absolute right-5 bottom-5 z-20 bg-card p-1.5 rounded-lg shadow-2xl">
             <img src={images.qr} alt="QR" className="w-16 h-16 rounded-md" />
-            <div className="text-[6px] text-center mt-1 font-bold text-slate-800 uppercase">
+            <div className="text-[6px] text-center mt-1 font-bold text-slate-900 uppercase">
               Scan to Start
             </div>
           </div>
