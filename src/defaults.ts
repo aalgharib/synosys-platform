@@ -45,11 +45,11 @@ export const defaultPosterConfig: PosterConfig = {
 export const defaultThumbnailImages: ImageConfig = {
   logo: "/branding/poster-logo.png",
   bg: "/branding/youtube-bg.svg",
-  person: null,
+  person: "/branding/personCut-pic.png",
 };
 
 export const defaultThumbnailConfig: ThumbnailConfig = {
-  accentColor: "#FF0000",
+  accentColor: "#00a7f4",
   backgroundColor: "#020617",
   opacity: 40,
   mainHook: "THE ULTIMATE AI",
@@ -58,7 +58,7 @@ export const defaultThumbnailConfig: ThumbnailConfig = {
   glowIntensity: 20,
   mainFontSize: 72,
   glowFontSize: 96,
-  logoPosition: "left",
+  logoPosition: "right",
   textAlign: "left",
   textPos: { x: 75, y: 50 },
 };
