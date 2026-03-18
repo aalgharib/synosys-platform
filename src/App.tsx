@@ -4,60 +4,69 @@ import {
   Home,
   Layout,
   Menu,
-  Palette,
   X,
   Youtube,
 } from "lucide-react";
-import { useRef, useState, type ChangeEvent } from "react";
+import { useMemo, useRef, useState, type ChangeEvent } from "react";
+import BrandLogo from "./components/BrandLogo";
 import Dashboard from "./components/Dashboard";
 import PosterCreator from "./components/PosterCreator";
+import ThemeToggle from "./components/ThemeToggle";
 import YoutubeThumbnailCreator from "./components/YoutubeThumbnailCreator";
+import { ThemeProvider } from "./context/ThemeContext";
 import { defaultBranding } from "./defaults";
 import type { Branding, Tool } from "./types/platform";
 
-export default function App() {
+const defaultThemeAwareLogos = new Set([
+  "/branding/platform-logo.png",
+  "/branding/poster-logo.png",
+]);
+
+function AppShell() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [isSidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const platformLogoInputRef = useRef<HTMLInputElement | null>(null);
   const profilePicInputRef = useRef<HTMLInputElement | null>(null);
   const currentYear = new Date().getFullYear();
-
   const [branding, setBranding] = useState<Branding>(defaultBranding);
 
-  const tools: Tool[] = [
-    {
-      id: "dashboard",
-      name: "Home",
-      icon: <Home size={20} />,
-      description: "Overview & tools",
-      color: "slate",
-      hidden: true,
-    },
-    {
-      id: "poster",
-      name: "Poster Creator",
-      icon: <Layout size={20} />,
-      description:
-        "Generate high-quality marketing flyers and social graphics in seconds.",
-      color: "blue",
-    },
-    {
-      id: "youtube",
-      name: "YouTube Creator",
-      icon: <Youtube size={20} />,
-      description:
-        "Hook viewers with high-CTR thumbnails featuring glowing text.",
-      color: "red",
-    },
-    {
-      id: "leads",
-      name: "Lead Tracker",
-      icon: <Grid size={20} />,
-      description: "Integrated CRM and pipeline management for your projects.",
-      disabled: true,
-      color: "emerald",
-    },
-  ];
+  const tools: Tool[] = useMemo(
+    () => [
+      {
+        id: "dashboard",
+        name: "Home",
+        icon: <Home size={20} />,
+        description: "Overview & tools",
+        color: "slate",
+        hidden: true,
+      },
+      {
+        id: "poster",
+        name: "Poster Creator",
+        icon: <Layout size={20} />,
+        description:
+          "Generate high-quality marketing flyers and social graphics in seconds.",
+        color: "blue",
+      },
+      {
+        id: "youtube",
+        name: "YouTube Creator",
+        icon: <Youtube size={20} />,
+        description:
+          "Hook viewers with high-CTR thumbnails featuring glowing text.",
+        color: "red",
+      },
+      {
+        id: "leads",
+        name: "Lead Tracker",
+        icon: <Grid size={20} />,
+        description: "Integrated CRM and pipeline management for your projects.",
+        disabled: true,
+        color: "emerald",
+      },
+    ],
+    [],
+  );
 
   const handleBrandingUpload = (
     event: ChangeEvent<HTMLInputElement>,
@@ -85,105 +94,125 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
-      <style>{`.custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>
+  const usingThemeAwareDefaultLogo =
+    !branding.platformLogo || defaultThemeAwareLogos.has(branding.platformLogo);
 
+  return (
+    <div className="flex min-h-screen bg-background font-sans text-foreground">
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 transform transition-transform duration-300 lg:relative lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 border-r border-border bg-sidebar/95 transition-transform duration-300 lg:relative lg:translate-x-0 ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="h-full flex flex-col p-6">
-          <div className="flex items-center justify-between mb-10 px-2">
+        <div className="flex h-full flex-col p-6">
+          <div className="mb-10 flex items-center justify-between px-2">
             <button
               type="button"
               onClick={() => platformLogoInputRef.current?.click()}
-              className="flex items-center gap-3 rounded-2xl p-1 -m-1 transition hover:bg-slate-50"
+              className="rounded-2xl p-1 transition hover:bg-accent/60"
+              aria-label="Upload platform logo"
             >
-              {branding.platformLogo ? (
+              {usingThemeAwareDefaultLogo ? (
+                <BrandLogo alt="SynoSys platform logo" className="h-10 w-auto" />
+              ) : branding.platformLogo ? (
                 <img
                   src={branding.platformLogo}
-                  alt="Logo"
-                  className="h-10 w-auto"
+                  alt="Custom platform logo"
+                  className="h-10 w-auto rounded-xl object-contain"
                 />
               ) : (
-                <>
-                  <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg">
-                    <Palette size={24} />
-                  </div>
-                  <span className="font-black text-xl tracking-tight">
-                    Syno<span className="text-blue-600">Sys</span>
-                  </span>
-                </>
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                  S
+                </div>
               )}
             </button>
             <button
+              type="button"
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-slate-400"
+              className="rounded-xl p-2 text-muted-foreground lg:hidden"
             >
               <X size={24} />
             </button>
           </div>
 
-          <nav className="flex-grow space-y-1">
+          <nav className="space-y-1">
             {tools
               .filter((tool) => tool.id === "dashboard" || !tool.hidden)
               .map((tool) => (
                 <button
                   key={tool.id}
+                  type="button"
                   disabled={tool.disabled}
                   onClick={() => setActiveTab(tool.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${
+                  className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 transition-all ${
                     activeTab === tool.id
-                      ? "bg-blue-50 text-blue-700 border border-blue-100 shadow-sm"
-                      : "text-slate-500 hover:bg-slate-50"
-                  } ${tool.disabled ? "opacity-40 cursor-not-allowed" : ""}`}
+                      ? "border border-primary/15 bg-primary/10 text-primary shadow-sm"
+                      : "text-muted-foreground hover:bg-accent/60"
+                  } ${tool.disabled ? "cursor-not-allowed opacity-40" : ""}`}
                 >
-                  {tool.icon}
-                  <span className="text-sm font-bold">{tool.name}</span>
+                  <span
+                    className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition-colors ${
+                      activeTab === tool.id
+                        ? "border-primary/20 bg-card text-primary"
+                        : "border-transparent bg-transparent text-muted-foreground"
+                    }`}
+                  >
+                    {tool.icon}
+                  </span>
+                  <span className="text-sm font-bold text-left">{tool.name}</span>
                 </button>
               ))}
           </nav>
+
+          <div className="mt-auto pt-6">
+            <div className="rounded-[2rem] border border-border bg-card/90 p-5 shadow-sm backdrop-blur-sm">
+              <p className="text-lg font-bold text-foreground">Appearance</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Switch between light, dark, and system themes.
+              </p>
+              <div className="mt-4">
+                <ThemeToggle />
+              </div>
+            </div>
+          </div>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-40">
+      <main className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/80 px-8 backdrop-blur-md">
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 text-slate-600 bg-slate-100 rounded-lg"
+              className="rounded-lg bg-muted p-2 text-foreground lg:hidden"
             >
               <Menu size={20} />
             </button>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-slate-400">
+              <span className="text-sm font-bold text-muted-foreground">
                 Dashboard
               </span>
               {activeTab !== "dashboard" && (
                 <>
-                  <ChevronRight size={14} className="text-slate-300" />
-                  <span className="text-sm font-black text-blue-600 uppercase">
+                  <ChevronRight size={14} className="text-border" />
+                  <span className="text-sm font-black uppercase text-primary">
                     {activeTab}
                   </span>
                 </>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => profilePicInputRef.current?.click()}
-              className="w-10 h-10 rounded-xl bg-slate-200 border-2 border-white shadow-md overflow-hidden ring-4 ring-blue-50 transition hover:scale-105"
-            >
-              <img
-                src={branding.profilePic}
-                alt="User Avatar"
-                className="w-full h-full object-cover"
-              />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => profilePicInputRef.current?.click()}
+            className="h-10 w-10 overflow-hidden rounded-xl border-2 border-white bg-muted shadow-md ring-4 ring-primary/10 transition hover:scale-105"
+          >
+            <img
+              src={branding.profilePic}
+              alt="User Avatar"
+              className="h-full w-full object-cover"
+            />
+          </button>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
@@ -201,7 +230,7 @@ export default function App() {
             onChange={(event) => handleBrandingUpload(event, "profilePic")}
             className="hidden"
           />
-          <div className="max-w-7xl mx-auto">
+          <div className="mx-auto max-w-7xl">
             {activeTab === "dashboard" && (
               <Dashboard tools={tools} onNavigate={setActiveTab} />
             )}
@@ -209,10 +238,19 @@ export default function App() {
             {activeTab === "youtube" && <YoutubeThumbnailCreator />}
           </div>
         </div>
-        <footer className="border-t border-slate-200 bg-white/80 px-8 py-4 text-center text-sm text-slate-500">
+
+        <footer className="border-t border-border bg-background/80 px-8 py-4 text-center text-sm text-muted-foreground">
           Copyright (c) {currentYear} SynoSys. All rights reserved.
         </footer>
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
   );
 }
