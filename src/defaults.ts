@@ -60,5 +60,5 @@ export const defaultThumbnailConfig: ThumbnailConfig = {
   glowFontSize: 96,
   logoPosition: "right",
   textAlign: "left",
-  textPos: { x: 75, y: 50 },
+  textPos: { x: 75, y: 55 },
 };
