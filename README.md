@@ -1,26 +1,42 @@
 # SynoSys Platform
 
-SynoSys Platform is a React + TypeScript + Vite app for creating branded marketing assets.
+SynoSys Platform is a Vite + React internal marketing operations app for building campaign assets, managing brand kits, and tracking campaign-linked leads.
 
-Current tools included:
+## Overview
 
+The app currently combines several tools inside a single dashboard-style SPA:
+
+- Campaign Studio
+- Brand Kit management
 - Poster Creator
 - YouTube Thumbnail Creator
+- Lead Tracker
+- Theme switching for light, dark, and system modes
 
-## Features
+Brand kits, campaigns, and leads are persisted in `localStorage` through the repository layer in `src/repositories/platformRepository.ts`.
 
-- Editable brand logo and profile image from the UI
-- Poster editor with draggable text blocks
-- Poster typography controls for font family, alignment, and text sizes
-- YouTube thumbnail editor with controls for colors, glow, font sizes, alignment, and background image
-- PNG export using `html-to-image`
+## Current Features
+
+- Dashboard shell with sidebar navigation
+- Campaign Studio for generating campaign packs by industry
+- Hook generation based on brand kit, offer, market, and industry template inputs
+- CTA generation and QR-ready metadata
+- Grouped asset concepts for ads, social posts, thumbnails, flyers, and promos
+- Brand Kit management with editable colors, typography, tone, market, CTA, and booking link defaults
+- Poster Creator with editable text, images, layout, and export-ready drafts
+- YouTube Thumbnail Creator with editable hooks, glow styling, colors, and draft handoff from campaign assets
+- Lead Tracker for campaign-linked leads and statuses
+- Persistent user data stored locally in the browser
+- Theme persistence across sessions
 
 ## Tech Stack
 
 - React 19
 - TypeScript
 - Vite
+- Tailwind CSS 4
 - Lucide React
+- ESLint
 
 ## Local Development
 
@@ -30,7 +46,7 @@ Current tools included:
 npm install
 ```
 
-2. Start the dev server:
+2. Start the development server:
 
 ```bash
 npm run dev
@@ -48,9 +64,38 @@ npm run build
 npm run preview
 ```
 
+## Styling Notes
+
+This project does not rely on the Tailwind CDN.
+
+Before both `dev` and `build`, it runs:
+
+```bash
+node scripts/generate-tailwind-css.mjs
+```
+
+That script compiles utility classes into:
+
+```text
+src/tailwind.generated.css
+```
+
+The generated stylesheet is imported from `src/main.tsx`.
+
+## Data Persistence
+
+The platform stores user data in `localStorage` under these keys:
+
+- `synosys.platform.brandKits`
+- `synosys.platform.campaigns`
+- `synosys.platform.leads`
+- `synosys-theme`
+
+Because persistence is browser-based, no backend or environment variables are required for the current version.
+
 ## Vercel Deployment
 
-This project is ready to deploy on Vercel.
+This project is deployable to Vercel as a Vite app.
 
 Recommended settings:
 
@@ -59,83 +104,46 @@ Recommended settings:
 - Output Directory: `dist`
 - Install Command: `npm install`
 
-You can deploy either by importing the Git repository into Vercel or by using the Vercel CLI.
-
-### Deploy with Vercel CLI
-
-```bash
-npm i -g vercel
-vercel
-```
-
-For production deployment:
-
-```bash
-vercel --prod
-```
-
-## Build Verification
-
-Production build was verified successfully with:
-
-```bash
-npm run build
-```
+The included `vercel.json` already points to the Vite build output.
 
 ## Project Structure
 
 ```text
 public/
   branding/
-    platform-logo.svg
-    profile-pic.svg
-    poster-logo.svg
-    poster-qr.svg
-    poster-bg.svg
-    youtube-logo.svg
-    youtube-bg.svg
 src/
   components/
+    BrandKitManager.tsx
+    CampaignStudio.tsx
     Dashboard.tsx
+    LeadTracker.tsx
     PosterCreator.tsx
+    ThemeToggle.tsx
     YoutubeThumbnailCreator.tsx
-  defaults.ts
+  context/
+    ThemeContext.tsx
   hooks/
     useImageExport.ts
+  lib/
+    theme.ts
+  repositories/
+    platformRepository.ts
+  services/
+    campaignGenerator.ts
+    hookGenerator.ts
   types/
     platform.ts
+  defaults.ts
+  index.css
+  tailwind.generated.css
   App.tsx
   main.tsx
+scripts/
+  generate-tailwind-css.mjs
 ```
-
-## Changing Default Setup
-
-All default content is now centralized in:
-
-`src/defaults.ts`
-
-This file controls:
-
-- default platform logo
-- default profile image
-- default poster logo
-- default poster QR code
-- default poster background
-- default poster text, sizes, alignment, and positions
-- default YouTube logo
-- default YouTube background
-- default YouTube text, sizes, glow, alignment, and colors
-
-Default image assets are stored in:
-
-`public/branding`
-
-To change the default setup:
-
-1. Replace the files inside `public/branding`
-2. Update any paths or values in `src/defaults.ts`
 
 ## Notes
 
-- The app currently uses the Tailwind CDN in `index.html` for utility classes.
-- No environment variables are required for the current version.
+- The current app is no longer limited to just poster and thumbnail creation; the README now reflects the newer campaign, brand kit, and lead tracking workflows.
+- Hook generation is currently template-driven inside the app, not powered by an external AI model.
+- This repo is migratable to Next.js later, but it behaves more like an internal SPA than the public `synoai-website` project.
