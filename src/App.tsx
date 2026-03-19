@@ -1,21 +1,39 @@
 import {
+  BriefcaseBusiness,
   ChevronRight,
-  Grid,
   Home,
   Layout,
   Menu,
+  Target,
   X,
   Youtube,
 } from "lucide-react";
-import { useMemo, useRef, useState, type ChangeEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import BrandLogo from "./components/BrandLogo";
+import CampaignStudio from "./components/CampaignStudio";
 import Dashboard from "./components/Dashboard";
+import LeadTracker from "./components/LeadTracker";
 import PosterCreator from "./components/PosterCreator";
 import ThemeToggle from "./components/ThemeToggle";
 import YoutubeThumbnailCreator from "./components/YoutubeThumbnailCreator";
 import { ThemeProvider } from "./context/ThemeContext";
 import { defaultBranding } from "./defaults";
-import type { Branding, Tool } from "./types/platform";
+import { platformRepository } from "./repositories/platformRepository";
+import type {
+  BrandKit,
+  Branding,
+  CampaignRecord,
+  LeadRecord,
+  PosterDraft,
+  ThumbnailDraft,
+  Tool,
+} from "./types/platform";
 
 const defaultThemeAwareLogos = new Set([
   "/branding/platform-logo.png",
@@ -28,7 +46,33 @@ function AppShell() {
   const platformLogoInputRef = useRef<HTMLInputElement | null>(null);
   const profilePicInputRef = useRef<HTMLInputElement | null>(null);
   const currentYear = new Date().getFullYear();
+
   const [branding, setBranding] = useState<Branding>(defaultBranding);
+  const [brandKits, setBrandKits] = useState<BrandKit[]>(() =>
+    platformRepository.listBrandKits(),
+  );
+  const [campaigns, setCampaigns] = useState<CampaignRecord[]>(() =>
+    platformRepository.listCampaigns(),
+  );
+  const [leads, setLeads] = useState<LeadRecord[]>(() =>
+    platformRepository.listLeads(),
+  );
+  const [posterDraft, setPosterDraft] = useState<PosterDraft | null>(null);
+  const [thumbnailDraft, setThumbnailDraft] = useState<ThumbnailDraft | null>(
+    null,
+  );
+
+  useEffect(() => {
+    platformRepository.saveBrandKits(brandKits);
+  }, [brandKits]);
+
+  useEffect(() => {
+    platformRepository.saveCampaigns(campaigns);
+  }, [campaigns]);
+
+  useEffect(() => {
+    platformRepository.saveLeads(leads);
+  }, [leads]);
 
   const tools: Tool[] = useMemo(
     () => [
@@ -39,6 +83,14 @@ function AppShell() {
         description: "Overview & tools",
         color: "slate",
         hidden: true,
+      },
+      {
+        id: "campaigns",
+        name: "Campaign Studio",
+        icon: <BriefcaseBusiness size={20} />,
+        description:
+          "Build campaign packs, manage brand kits, and prepare grouped assets.",
+        color: "blue",
       },
       {
         id: "poster",
@@ -59,9 +111,9 @@ function AppShell() {
       {
         id: "leads",
         name: "Lead Tracker",
-        icon: <Grid size={20} />,
-        description: "Integrated CRM and pipeline management for your projects.",
-        disabled: true,
+        icon: <Target size={20} />,
+        description:
+          "Track campaign-linked leads, statuses, and booking outcomes.",
         color: "emerald",
       },
     ],
@@ -92,6 +144,16 @@ function AppShell() {
       }));
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleOpenPosterDraft = (draft: PosterDraft) => {
+    setPosterDraft(draft);
+    setActiveTab("poster");
+  };
+
+  const handleOpenThumbnailDraft = (draft: ThumbnailDraft) => {
+    setThumbnailDraft(draft);
+    setActiveTab("youtube");
   };
 
   const usingThemeAwareDefaultLogo =
@@ -159,7 +221,7 @@ function AppShell() {
                   >
                     {tool.icon}
                   </span>
-                  <span className="text-sm font-bold text-left">{tool.name}</span>
+                  <span className="text-left text-sm font-bold">{tool.name}</span>
                 </button>
               ))}
           </nav>
@@ -234,8 +296,36 @@ function AppShell() {
             {activeTab === "dashboard" && (
               <Dashboard tools={tools} onNavigate={setActiveTab} />
             )}
-            {activeTab === "poster" && <PosterCreator />}
-            {activeTab === "youtube" && <YoutubeThumbnailCreator />}
+            {activeTab === "campaigns" && (
+              <CampaignStudio
+                brandKits={brandKits}
+                campaigns={campaigns}
+                onSaveBrandKits={setBrandKits}
+                onSaveCampaigns={setCampaigns}
+                onOpenPosterDraft={handleOpenPosterDraft}
+                onOpenThumbnailDraft={handleOpenThumbnailDraft}
+                onOpenLeadTracker={() => setActiveTab("leads")}
+              />
+            )}
+            {activeTab === "poster" && (
+              <PosterCreator
+                key={posterDraft?.id ?? "poster-default"}
+                draft={posterDraft}
+              />
+            )}
+            {activeTab === "youtube" && (
+              <YoutubeThumbnailCreator
+                key={thumbnailDraft?.id ?? "thumbnail-default"}
+                draft={thumbnailDraft}
+              />
+            )}
+            {activeTab === "leads" && (
+              <LeadTracker
+                campaigns={campaigns}
+                leads={leads}
+                onSaveLeads={setLeads}
+              />
+            )}
           </div>
         </div>
 

@@ -6,14 +6,43 @@ import {
   User,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { defaultThumbnailConfig, defaultThumbnailImages } from "../defaults";
+import {
+  availableFontFamilies,
+  defaultThumbnailConfig,
+  defaultThumbnailImages,
+} from "../defaults";
 import { useImageExport } from "../hooks/useImageExport";
-import type { ImageConfig, ThumbnailConfig } from "../types/platform";
+import type {
+  ImageConfig,
+  ThumbnailConfig,
+  ThumbnailDraft,
+} from "../types/platform";
 
-export default function YoutubeThumbnailCreator() {
-  const [config, setConfig] = useState<ThumbnailConfig>(defaultThumbnailConfig);
+interface YoutubeThumbnailCreatorProps {
+  draft?: ThumbnailDraft | null;
+}
 
-  const [images, setImages] = useState<ImageConfig>(defaultThumbnailImages);
+const buildThumbnailConfig = (
+  draft?: ThumbnailDraft | null,
+): ThumbnailConfig => ({
+  ...defaultThumbnailConfig,
+  ...draft?.config,
+});
+
+const buildThumbnailImages = (draft?: ThumbnailDraft | null): ImageConfig => ({
+  ...defaultThumbnailImages,
+  ...draft?.images,
+});
+
+export default function YoutubeThumbnailCreator({
+  draft,
+}: YoutubeThumbnailCreatorProps) {
+  const [config, setConfig] = useState<ThumbnailConfig>(() =>
+    buildThumbnailConfig(draft),
+  );
+  const [images, setImages] = useState<ImageConfig>(() =>
+    buildThumbnailImages(draft),
+  );
 
   const [isExporting, setIsExporting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -240,19 +269,11 @@ export default function YoutubeThumbnailCreator() {
                   }
                   className="input-base rounded-xl bg-muted/40 px-3 py-2.5 text-sm"
                 >
-                  <option value='"Space Grotesk", system-ui, sans-serif'>
-                    Space Grotesk
-                  </option>
-                  <option value="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif">
-                    Impact
-                  </option>
-                  <option value="'Arial Black', Gadget, sans-serif">
-                    Arial Black
-                  </option>
-                  <option value="'Trebuchet MS', sans-serif">
-                    Trebuchet
-                  </option>
-                  <option value="Georgia, serif">Georgia</option>
+                  {availableFontFamilies.map((font) => (
+                    <option key={font.value} value={font.value}>
+                      {font.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>

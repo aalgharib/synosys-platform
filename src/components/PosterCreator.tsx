@@ -1,18 +1,40 @@
 import { Download } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { defaultPosterConfig, defaultPosterImages } from "../defaults";
+import {
+  availableFontFamilies,
+  defaultPosterConfig,
+  defaultPosterImages,
+} from "../defaults";
 import { useImageExport } from "../hooks/useImageExport";
 import type {
   PosterConfig,
+  PosterDraft,
   PosterImages,
   PosterTextAlign,
 } from "../types/platform";
 type PosterDragTarget = "headline" | "message" | "footer" | null;
 
-export default function PosterCreator() {
-  const [config, setConfig] = useState<PosterConfig>(defaultPosterConfig);
+interface PosterCreatorProps {
+  draft?: PosterDraft | null;
+}
 
-  const [images, setImages] = useState<PosterImages>(defaultPosterImages);
+const buildPosterConfig = (draft?: PosterDraft | null): PosterConfig => ({
+  ...defaultPosterConfig,
+  ...draft?.config,
+});
+
+const buildPosterImages = (draft?: PosterDraft | null): PosterImages => ({
+  ...defaultPosterImages,
+  ...draft?.images,
+});
+
+export default function PosterCreator({ draft }: PosterCreatorProps) {
+  const [config, setConfig] = useState<PosterConfig>(() =>
+    buildPosterConfig(draft),
+  );
+  const [images, setImages] = useState<PosterImages>(() =>
+    buildPosterImages(draft),
+  );
 
   const [isExporting, setIsExporting] = useState(false);
   const [dragTarget, setDragTarget] = useState<PosterDragTarget>(null);
@@ -266,17 +288,11 @@ export default function PosterCreator() {
               }
               className="input-base rounded-lg px-3 py-2 text-sm bg-card"
             >
-              <option value='"Space Grotesk", system-ui, sans-serif'>
-                Space Grotesk
-              </option>
-              <option value="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif">
-                Impact
-              </option>
-              <option value="'Arial Black', Gadget, sans-serif">
-                Arial Black
-              </option>
-              <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
-              <option value="Georgia, serif">Georgia</option>
+              {availableFontFamilies.map((font) => (
+                <option key={font.value} value={font.value}>
+                  {font.label}
+                </option>
+              ))}
             </select>
           </div>
           <div>
