@@ -1,4 +1,5 @@
 import {
+  defaultPosterVariant,
   defaultCampaignPhase2Scaffold,
   industryTemplates,
 } from "../defaults";
@@ -271,6 +272,7 @@ export const createPosterDraftFromAsset = (
 ): PosterDraft => ({
   id: createId("poster-draft"),
   title: asset.title,
+  variant: defaultPosterVariant,
   config: {
     accentColor: brandKit.primaryColor,
     topLine1: asset.headline,

@@ -16,6 +16,7 @@ import type {
   ImageConfig,
   ThumbnailConfig,
   ThumbnailDraft,
+  ThumbnailLayoutSide,
 } from "../types/platform";
 
 interface YoutubeThumbnailCreatorProps {
@@ -48,6 +49,8 @@ export default function YoutubeThumbnailCreator({
   const [isDragging, setIsDragging] = useState(false);
   const thumbRef = useRef<HTMLDivElement | null>(null);
   const { exportElement } = useImageExport();
+  const displayedTextX =
+    config.layoutSide === "person-left" ? config.textPos.x : 100 - config.textPos.x;
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -95,6 +98,13 @@ export default function YoutubeThumbnailCreator({
   const getResponsiveFontSize = (size: number, mobileRatio: number) =>
     `clamp(${Math.max(24, Math.round(size * mobileRatio))}px, 6vw, ${size}px)`;
 
+  const setLayoutSide = (layoutSide: ThumbnailLayoutSide) => {
+    setConfig((previous) => ({
+      ...previous,
+      layoutSide,
+    }));
+  };
+
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
       if (!isDragging || !thumbRef.current) {
@@ -104,11 +114,14 @@ export default function YoutubeThumbnailCreator({
       const rect = thumbRef.current.getBoundingClientRect();
       const x = ((event.clientX - rect.left) / rect.width) * 100;
       const y = ((event.clientY - rect.top) / rect.height) * 100;
+      const clampedX = Math.min(Math.max(x, 5), 95);
+      const storedX =
+        config.layoutSide === "person-left" ? clampedX : 100 - clampedX;
 
       setConfig((previous) => ({
         ...previous,
         textPos: {
-          x: Math.min(Math.max(x, 5), 95),
+          x: storedX,
           y: Math.min(Math.max(y, 5), 95),
         },
       }));
@@ -125,7 +138,7 @@ export default function YoutubeThumbnailCreator({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDragging]);
+  }, [config.layoutSide, isDragging]);
 
   return (
     <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
@@ -202,6 +215,35 @@ export default function YoutubeThumbnailCreator({
                     }`}
                   >
                     <AlignRight size={14} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-muted/40 rounded-xl border border-border/70">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                  Layout Side
+                </span>
+                <div className="flex bg-card rounded-lg p-1 shadow-sm border border-border">
+                  <button
+                    type="button"
+                    onClick={() => setLayoutSide("person-left")}
+                    className={`px-2.5 py-1.5 rounded-md text-[10px] font-bold uppercase transition-all ${
+                      config.layoutSide === "person-left"
+                        ? "bg-red-500 text-white"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Person Left
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLayoutSide("person-right")}
+                    className={`px-2.5 py-1.5 rounded-md text-[10px] font-bold uppercase transition-all ${
+                      config.layoutSide === "person-right"
+                        ? "bg-red-500 text-white"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Person Right
                   </button>
                 </div>
               </div>
@@ -447,7 +489,11 @@ export default function YoutubeThumbnailCreator({
                 />
               </div>
               {images.person && (
-                <div className="absolute bottom-0 left-0 z-20 h-[95%]">
+                <div
+                  className={`absolute bottom-0 z-20 h-[95%] ${
+                    config.layoutSide === "person-left" ? "left-0" : "right-0"
+                  }`}
+                >
                   <img
                     src={images.person}
                     alt="Presenter"
@@ -461,7 +507,7 @@ export default function YoutubeThumbnailCreator({
                   isDragging ? "ring-2 ring-red-500/50 rounded-xl bg-black/10" : ""
                 }`}
                 style={{
-                  left: `${config.textPos.x}%`,
+                  left: `${displayedTextX}%`,
                   top: `${config.textPos.y}%`,
                   transform: "translate(-50%, -50%)",
                 }}

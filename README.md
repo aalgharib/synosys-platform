@@ -8,7 +8,7 @@ The app currently combines several tools inside a single dashboard-style SPA:
 
 - Campaign Studio
 - Brand Kit management
-- Poster Creator
+- Poster Creator with Facebook / Instagram vertical and X horizontal variants
 - YouTube Thumbnail Creator
 - Lead Tracker
 - Theme switching for light, dark, and system modes
@@ -23,11 +23,19 @@ Brand kits, campaigns, and leads are persisted in `localStorage` through the rep
 - CTA generation and QR-ready metadata
 - Grouped asset concepts for ads, social posts, thumbnails, flyers, and promos
 - Brand Kit management with editable colors, typography, tone, market, CTA, and booking link defaults
-- Poster Creator with editable text, images, layout, and export-ready drafts
-- YouTube Thumbnail Creator with editable hooks, glow styling, colors, and draft handoff from campaign assets
+- Poster Creator with editable text, images, layout, export-ready drafts, and both Facebook / Instagram vertical plus X horizontal poster modes
+- X horizontal poster defaults tuned for a cleaner composition, with optional removable X-only elements such as the message card, info card, QR card, accent panel, badge, and side panel
+- YouTube Thumbnail Creator with editable hooks, glow styling, colors, left/right person-text layout switching, and draft handoff from campaign assets
 - Lead Tracker for campaign-linked leads and statuses
 - Persistent user data stored locally in the browser
 - Theme persistence across sessions
+
+## Creative Tool Notes
+
+- Poster Creator keeps the original Facebook / Instagram vertical layout intact while adding an X horizontal variant with its own defaults, assets, spacing, and starter presets.
+- The horizontal X poster includes an element control layer in the editor so optional cards and decorative containers can be selected, removed, and restored without affecting the core canvas.
+- The default horizontal X composition intentionally hides the extra badge and side-panel treatment, so the poster starts from a cleaner marketing layout by default.
+- The YouTube Thumbnail Creator includes a `Layout Side` control that swaps only the person cutout and text block from left-to-right or right-to-left while leaving logo positioning independent.
 
 ## Tech Stack
 

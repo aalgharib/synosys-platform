@@ -15,7 +15,26 @@ export interface Branding {
   profilePic: string;
 }
 
+export type PosterVariant = "facebook-instagram" | "x-horizontal";
+
 export type PosterTextAlign = "left" | "center" | "right";
+
+export type PosterElementId =
+  | "accent-panel"
+  | "message-card"
+  | "footer-card"
+  | "qr-card"
+  | "badge"
+  | "info-panel";
+
+export type PosterElementRole = "content" | "utility" | "decor";
+
+export interface PosterElementState {
+  id: PosterElementId;
+  role: PosterElementRole;
+  visible: boolean;
+  removable: boolean;
+}
 
 export interface PosterConfig {
   accentColor: string;
@@ -55,6 +74,8 @@ export interface ImageConfig {
   qr?: string;
 }
 
+export type ThumbnailLayoutSide = "person-left" | "person-right";
+
 export interface ThumbnailConfig {
   accentColor: string;
   backgroundColor: string;
@@ -65,6 +86,7 @@ export interface ThumbnailConfig {
   glowIntensity: number;
   mainFontSize: number;
   glowFontSize: number;
+  layoutSide: ThumbnailLayoutSide;
   logoPosition: "left" | "right";
   textAlign: "left" | "center" | "right";
   textPos: { x: number; y: number };
@@ -258,7 +280,9 @@ export interface LeadRecord {
 export interface PosterDraft {
   id: string;
   title: string;
+  variant?: PosterVariant;
   config: Partial<PosterConfig>;
+  elements?: Partial<Record<PosterElementId, Partial<PosterElementState>>>;
   images?: Partial<PosterImages>;
 }
 
