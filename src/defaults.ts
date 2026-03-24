@@ -318,12 +318,12 @@ export const defaultPosterImagesByVariant: Record<PosterVariant, PosterImages> =
   "facebook-instagram": {
     logo: "/branding/poster-logo.png",
     qr: "/branding/poster-qr.png",
-    bg: "/branding/poster-bg.png",
+    bg: "/branding/poster-bg-x.png",
   },
   "x-horizontal": {
     logo: "/branding/poster-logo.png",
     qr: "/branding/poster-qr.png",
-    bg: "/branding/poster-bg-x.svg",
+    bg: "/branding/poster-bg-x.png",
   },
 };
 
