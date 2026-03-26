@@ -169,8 +169,24 @@ const numericConfigFields = new Set<keyof PosterConfig>([
   "comparisonRightPanelOpacity",
   "comparisonSupportPanelOpacity",
   "comparisonDividerX",
+  "comparisonPanelBottomInset",
   "comparisonRowGap",
   "comparisonIconSize",
+  "comparisonTextGlowIntensity",
+  "comparisonTextDepth",
+  "comparisonTextDepthOpacity",
+  "comparisonSupportBackplateOpacity",
+  "comparisonSupportBackplateBlur",
+  "comparisonSupportBackplateWidth",
+  "comparisonSupportBackplateHeight",
+  "comparisonLeftGlowX",
+  "comparisonLeftGlowY",
+  "comparisonLeftGlowSize",
+  "comparisonLeftGlowOpacity",
+  "comparisonRightGlowX",
+  "comparisonRightGlowY",
+  "comparisonRightGlowSize",
+  "comparisonRightGlowOpacity",
 ]);
 
 const readFileAsDataUrl = (
@@ -1180,6 +1196,20 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-foreground mb-1">
+                    Side Panel Bottom
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonPanelBottomInset"
+                    min="0"
+                    max="30"
+                    value={config.comparisonPanelBottomInset}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
                     Divider Style
                   </label>
                   <select
@@ -1274,6 +1304,342 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
                     value={config.comparisonRightIconColor}
                     onChange={handleInputChange}
                     className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
+              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                Text Effects
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Text Glow Color
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonTextGlowColor"
+                    value={config.comparisonTextGlowColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Glow Strength
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonTextGlowIntensity"
+                    min="0"
+                    max="60"
+                    value={config.comparisonTextGlowIntensity}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    3D Depth
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonTextDepth"
+                    min="0"
+                    max="12"
+                    value={config.comparisonTextDepth}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Depth Opacity
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonTextDepthOpacity"
+                    min="0"
+                    max="100"
+                    value={config.comparisonTextDepthOpacity}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
+              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                Support Backplate
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-3 py-3">
+                  <input
+                    id="comparison-show-support-backplate"
+                    type="checkbox"
+                    checked={config.comparisonShowSupportBackplate}
+                    onChange={(event) =>
+                      updateConfigField(
+                        "comparisonShowSupportBackplate",
+                        event.target.checked,
+                      )
+                    }
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <label
+                    htmlFor="comparison-show-support-backplate"
+                    className="text-xs font-bold text-foreground"
+                  >
+                    Show Backplate
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Backplate Color
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonSupportBackplateColor"
+                    value={config.comparisonSupportBackplateColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Backplate Opacity
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonSupportBackplateOpacity"
+                    min="0"
+                    max="100"
+                    value={config.comparisonSupportBackplateOpacity}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Backplate Blur
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonSupportBackplateBlur"
+                    min="0"
+                    max="60"
+                    value={config.comparisonSupportBackplateBlur}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Backplate Width
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonSupportBackplateWidth"
+                    min="20"
+                    max="70"
+                    value={config.comparisonSupportBackplateWidth}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Backplate Height
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonSupportBackplateHeight"
+                    min="4"
+                    max="24"
+                    value={config.comparisonSupportBackplateHeight}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
+              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                Panel Glow
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-3 py-3">
+                  <input
+                    id="comparison-show-left-glow"
+                    type="checkbox"
+                    checked={config.comparisonShowLeftGlow}
+                    onChange={(event) =>
+                      updateConfigField("comparisonShowLeftGlow", event.target.checked)
+                    }
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <label
+                    htmlFor="comparison-show-left-glow"
+                    className="text-xs font-bold text-foreground"
+                  >
+                    Show Left Glow
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Left Glow Color
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonLeftGlowColor"
+                    value={config.comparisonLeftGlowColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Left Glow Opacity
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonLeftGlowOpacity"
+                    min="0"
+                    max="100"
+                    value={config.comparisonLeftGlowOpacity}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Left Glow X
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonLeftGlowX"
+                    min="0"
+                    max="100"
+                    value={config.comparisonLeftGlowX}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Left Glow Y
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonLeftGlowY"
+                    min="0"
+                    max="100"
+                    value={config.comparisonLeftGlowY}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Left Glow Size
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonLeftGlowSize"
+                    min="6"
+                    max="40"
+                    value={config.comparisonLeftGlowSize}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-3 py-3">
+                  <input
+                    id="comparison-show-right-glow"
+                    type="checkbox"
+                    checked={config.comparisonShowRightGlow}
+                    onChange={(event) =>
+                      updateConfigField("comparisonShowRightGlow", event.target.checked)
+                    }
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <label
+                    htmlFor="comparison-show-right-glow"
+                    className="text-xs font-bold text-foreground"
+                  >
+                    Show Right Glow
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Right Glow Color
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonRightGlowColor"
+                    value={config.comparisonRightGlowColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Right Glow Opacity
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonRightGlowOpacity"
+                    min="0"
+                    max="100"
+                    value={config.comparisonRightGlowOpacity}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Right Glow X
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonRightGlowX"
+                    min="0"
+                    max="100"
+                    value={config.comparisonRightGlowX}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Right Glow Y
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonRightGlowY"
+                    min="0"
+                    max="100"
+                    value={config.comparisonRightGlowY}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Right Glow Size
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonRightGlowSize"
+                    min="6"
+                    max="40"
+                    value={config.comparisonRightGlowSize}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
                   />
                 </div>
               </div>

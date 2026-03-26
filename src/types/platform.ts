@@ -115,15 +115,38 @@ export interface PosterConfig {
   comparisonSupportPanelOpacity: number;
   comparisonDividerColor: string;
   comparisonDividerX: number;
+  comparisonPanelBottomInset: number;
   comparisonShowDividers: boolean;
   comparisonDividerStyle: "solid" | "soft" | "glow";
   comparisonHeadlineColor: string;
   comparisonTextColor: string;
   comparisonMutedTextColor: string;
+  comparisonTextGlowColor: string;
+  comparisonTextGlowIntensity: number;
+  comparisonTextDepth: number;
+  comparisonTextDepthOpacity: number;
   comparisonLeftIconColor: string;
   comparisonRightIconColor: string;
   comparisonRowGap: number;
   comparisonIconSize: number;
+  comparisonShowSupportBackplate: boolean;
+  comparisonSupportBackplateColor: string;
+  comparisonSupportBackplateOpacity: number;
+  comparisonSupportBackplateBlur: number;
+  comparisonSupportBackplateWidth: number;
+  comparisonSupportBackplateHeight: number;
+  comparisonShowLeftGlow: boolean;
+  comparisonLeftGlowColor: string;
+  comparisonLeftGlowX: number;
+  comparisonLeftGlowY: number;
+  comparisonLeftGlowSize: number;
+  comparisonLeftGlowOpacity: number;
+  comparisonShowRightGlow: boolean;
+  comparisonRightGlowColor: string;
+  comparisonRightGlowX: number;
+  comparisonRightGlowY: number;
+  comparisonRightGlowSize: number;
+  comparisonRightGlowOpacity: number;
 }
 
 export interface PosterImages {

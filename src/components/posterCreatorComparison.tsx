@@ -187,6 +187,25 @@ export function ComparisonPosterPreview({
   setDragTarget,
 }: ComparisonPosterPreviewProps) {
   const { leading, accent } = splitComparisonHeadline(config.comparisonHeadline);
+  const textGlowBlur = config.comparisonTextGlowIntensity;
+  const depthOffset = config.comparisonTextDepth;
+  const depthColor = `rgba(0, 0, 0, ${config.comparisonTextDepthOpacity / 100})`;
+  const buildTextShadow = (
+    glowColor: string,
+    glowMultiplier = 1,
+    depthMultiplier = 1,
+  ) =>
+    [
+      `${Math.max(depthOffset * depthMultiplier, 0)}px ${Math.max(
+        depthOffset * depthMultiplier,
+        0,
+      )}px 0 ${depthColor}`,
+      `0 0 ${Math.max(textGlowBlur * glowMultiplier, 0)}px ${colorWithAlpha(
+        glowColor,
+        0.42,
+      )}`,
+      `0 8px 18px rgba(0,0,0,0.22)`,
+    ].join(", ");
   const dividerOpacity =
     config.comparisonDividerStyle === "solid"
       ? 0.72
@@ -201,6 +220,7 @@ export function ComparisonPosterPreview({
   const dividerX = `${config.comparisonDividerX}%`;
   const leftWidth = `${config.comparisonDividerX}%`;
   const rightWidth = `${100 - config.comparisonDividerX}%`;
+  const panelBottom = `${config.comparisonPanelBottomInset}%`;
   const showDividers = config.comparisonShowDividers;
 
   const renderBulletList = (
@@ -247,6 +267,7 @@ export function ComparisonPosterPreview({
                 style={{
                   color: config.comparisonTextColor,
                   fontSize: `${config.comparisonBulletSize}px`,
+                  textShadow: buildTextShadow(config.comparisonTextGlowColor, 0.45, 0.75),
                 }}
               >
                 {bullet.text}
@@ -285,11 +306,44 @@ export function ComparisonPosterPreview({
           )} 0%, ${colorWithAlpha(config.backgroundColor, 0.38)} 100%)`,
         }}
       ></div>
+      {config.comparisonShowLeftGlow && (
+        <div
+          className="absolute z-20 rounded-full blur-3xl"
+          style={{
+            left: `${config.comparisonLeftGlowX}%`,
+            top: `${config.comparisonLeftGlowY}%`,
+            width: `${config.comparisonLeftGlowSize}%`,
+            height: `${config.comparisonLeftGlowSize}%`,
+            transform: "translate(-50%, -50%)",
+            backgroundColor: colorWithAlpha(
+              config.comparisonLeftGlowColor,
+              config.comparisonLeftGlowOpacity / 100,
+            ),
+          }}
+        ></div>
+      )}
+      {config.comparisonShowRightGlow && (
+        <div
+          className="absolute z-20 rounded-full blur-3xl"
+          style={{
+            left: `${config.comparisonRightGlowX}%`,
+            top: `${config.comparisonRightGlowY}%`,
+            width: `${config.comparisonRightGlowSize}%`,
+            height: `${config.comparisonRightGlowSize}%`,
+            transform: "translate(-50%, -50%)",
+            backgroundColor: colorWithAlpha(
+              config.comparisonRightGlowColor,
+              config.comparisonRightGlowOpacity / 100,
+            ),
+          }}
+        ></div>
+      )}
       {config.comparisonShowLeftPanel && (
         <div
-          className="absolute left-0 top-[26%] bottom-[18%] z-10"
+          className="absolute left-0 top-[26%] z-10"
           style={{
             width: leftWidth,
+            bottom: panelBottom,
             background: `linear-gradient(180deg, ${colorWithAlpha(
               config.comparisonLeftPanelColor,
               config.comparisonLeftPanelOpacity / 100,
@@ -315,9 +369,10 @@ export function ComparisonPosterPreview({
       )}
       {config.comparisonShowRightPanel && (
         <div
-          className="absolute right-0 top-[26%] bottom-[18%] z-10"
+          className="absolute right-0 top-[26%] z-10"
           style={{
             width: rightWidth,
+            bottom: panelBottom,
             background: `linear-gradient(180deg, ${colorWithAlpha(
               config.comparisonRightPanelColor,
               config.comparisonRightPanelOpacity / 100,
@@ -371,9 +426,10 @@ export function ComparisonPosterPreview({
       {showDividers && (
         <>
           <div
-            className="absolute top-[26%] bottom-[18%] z-20 w-px -translate-x-1/2"
+            className="absolute top-[26%] z-20 w-px -translate-x-1/2"
             style={{
               left: dividerX,
+              bottom: panelBottom,
               backgroundColor: dividerColor,
               boxShadow: dividerShadow,
             }}
@@ -428,7 +484,7 @@ export function ComparisonPosterPreview({
           style={{
             color: config.comparisonHeadlineColor,
             fontSize: `${config.comparisonHeadlineSize}px`,
-            textShadow: "0 8px 24px rgba(0,0,0,0.28)",
+            textShadow: buildTextShadow(config.comparisonTextGlowColor, 1.3, 1.15),
           }}
         >
           {leading}
@@ -452,7 +508,7 @@ export function ComparisonPosterPreview({
               style={{
                 color: config.comparisonTextColor,
                 fontSize: `${config.comparisonTitleSize}px`,
-                textShadow: "0 8px 16px rgba(0,0,0,0.22)",
+                textShadow: buildTextShadow(config.comparisonTextGlowColor, 0.85),
               }}
             >
               {config.comparisonLeftTitle}
@@ -480,7 +536,7 @@ export function ComparisonPosterPreview({
               style={{
                 color: config.comparisonTextColor,
                 fontSize: `${config.comparisonTitleSize}px`,
-                textShadow: "0 8px 16px rgba(0,0,0,0.22)",
+                textShadow: buildTextShadow(config.comparisonTextGlowColor, 0.85),
               }}
             >
               {config.comparisonRightTitle}
@@ -517,12 +573,27 @@ export function ComparisonPosterPreview({
           ...sharedTextStyle,
         }}
       >
+        {config.comparisonShowSupportBackplate && (
+          <div
+            className="absolute left-1/2 top-1/2 -z-10 rounded-full"
+            style={{
+              width: `${config.comparisonSupportBackplateWidth}%`,
+              height: `${config.comparisonSupportBackplateHeight * 10}px`,
+              transform: "translate(-50%, -50%)",
+              backgroundColor: colorWithAlpha(
+                config.comparisonSupportBackplateColor,
+                config.comparisonSupportBackplateOpacity / 100,
+              ),
+              filter: `blur(${config.comparisonSupportBackplateBlur}px)`,
+            }}
+          ></div>
+        )}
         <p
           className="font-black italic leading-none"
           style={{
             color: config.comparisonTextColor,
             fontSize: `${config.comparisonSupportSize}px`,
-            textShadow: "0 8px 18px rgba(0,0,0,0.28)",
+            textShadow: buildTextShadow(config.comparisonTextGlowColor, 1.05, 1),
           }}
         >
           {config.comparisonSupportText}
@@ -552,7 +623,7 @@ export function ComparisonPosterPreview({
           style={{
             color: config.comparisonTextColor,
             fontSize: `${config.comparisonWebsiteSize}px`,
-            textShadow: "0 10px 24px rgba(0,0,0,0.34)",
+            textShadow: buildTextShadow(config.comparisonTextGlowColor, 1.1, 1.05),
           }}
         >
           {config.comparisonWebsiteText}
@@ -562,6 +633,7 @@ export function ComparisonPosterPreview({
           style={{
             color: config.comparisonMutedTextColor,
             fontSize: `${config.comparisonBusinessNameSize}px`,
+            textShadow: buildTextShadow(config.comparisonTextGlowColor, 0.4, 0.65),
           }}
         >
           {config.comparisonBusinessName}
