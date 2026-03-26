@@ -377,10 +377,11 @@ export const defaultPosterImagesByVariant: Record<PosterVariant, PosterImages> =
 };
 
 export const defaultPosterConfigByVariant: Record<PosterVariant, PosterConfig> = {
-  "facebook-instagram": {
-    accentColor: "#00a7f4",
-    backgroundColor: "#020617",
-    opacity: 82,
+    "facebook-instagram": {
+      accentColor: "#00a7f4",
+      backgroundColor: "#020617",
+      transparentBackground: false,
+      opacity: 82,
     topLine1: "STOP LOSING CLIENTS",
     topLine2: "YOU ALREADY PAID TO ATTRACT",
     middleLine1: "Most businesses don't have a lead problem.",
@@ -473,10 +474,11 @@ export const defaultPosterConfigByVariant: Record<PosterVariant, PosterConfig> =
     comparisonRightGlowSize: 20,
     comparisonRightGlowOpacity: 24,
   },
-  "x-horizontal": {
-    accentColor: "#00a7f4",
-    backgroundColor: "#020617",
-    opacity: 76,
+    "x-horizontal": {
+      accentColor: "#00a7f4",
+      backgroundColor: "#020617",
+      transparentBackground: false,
+      opacity: 76,
     topLine1: "TURN X ATTENTION",
     topLine2: "INTO QUALIFIED CONVERSATIONS",
     middleLine1:
@@ -570,10 +572,11 @@ export const defaultPosterConfigByVariant: Record<PosterVariant, PosterConfig> =
     comparisonRightGlowSize: 20,
     comparisonRightGlowOpacity: 24,
   },
-  "comparison-template": {
-    accentColor: "#8fd8ff",
-    backgroundColor: "#071b34",
-    opacity: 18,
+    "comparison-template": {
+      accentColor: "#8fd8ff",
+      backgroundColor: "#071b34",
+      transparentBackground: false,
+      opacity: 18,
     topLine1: "SAME LEADS.",
     topLine2: "DIFFERENT OUTCOME.",
     middleLine1: "The faster business wins.",

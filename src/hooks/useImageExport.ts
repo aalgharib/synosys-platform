@@ -55,20 +55,23 @@ export const useImageExport = () => {
     setIsExporting(true);
 
     try {
-      const width = options?.width ?? ref.current.offsetWidth;
-      const height = options?.height ?? ref.current.offsetHeight;
+      const sourceWidth = ref.current.offsetWidth;
+      const sourceHeight = ref.current.offsetHeight;
+      const exportWidth = options?.width ?? sourceWidth;
+      const exportHeight = options?.height ?? sourceHeight;
+
       const dataUrl = await htmlToImage.toPng(ref.current, {
         quality: 1,
         pixelRatio: 1,
         cacheBust: true,
-        width,
-        height,
-        canvasWidth: width,
-        canvasHeight: height,
+        width: sourceWidth,
+        height: sourceHeight,
+        canvasWidth: exportWidth,
+        canvasHeight: exportHeight,
         backgroundColor: options?.backgroundColor,
         style: {
-          width: `${width}px`,
-          height: `${height}px`,
+          width: `${sourceWidth}px`,
+          height: `${sourceHeight}px`,
         },
       });
 

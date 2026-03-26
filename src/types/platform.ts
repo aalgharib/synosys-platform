@@ -63,6 +63,7 @@ export interface PosterElementState {
 export interface PosterConfig {
   accentColor: string;
   backgroundColor: string;
+  transparentBackground: boolean;
   opacity: number;
   topLine1: string;
   topLine2: string;

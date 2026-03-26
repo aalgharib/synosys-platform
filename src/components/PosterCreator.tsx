@@ -79,6 +79,7 @@ const buildPosterElements = (
 const getSharedVariantConfig = (config: PosterConfig): Partial<PosterConfig> => ({
   accentColor: config.accentColor,
   backgroundColor: config.backgroundColor,
+  transparentBackground: config.transparentBackground,
   opacity: config.opacity,
   topLine1: config.topLine1,
   topLine2: config.topLine2,
@@ -101,6 +102,7 @@ const getSharedVariantConfig = (config: PosterConfig): Partial<PosterConfig> => 
 const getBrandingConfig = (config: PosterConfig): Partial<PosterConfig> => ({
   accentColor: config.accentColor,
   backgroundColor: config.backgroundColor,
+  transparentBackground: config.transparentBackground,
   opacity: config.opacity,
   footerName: config.footerName,
   footerTagline: config.footerTagline,
@@ -232,6 +234,21 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
   );
   const isHorizontalX = variant === "x-horizontal";
   const isComparisonTemplate = variant === "comparison-template";
+  const posterBackgroundColor = config.transparentBackground
+    ? "transparent"
+    : config.backgroundColor;
+  const exportBackgroundColor = config.transparentBackground
+    ? undefined
+    : config.backgroundColor;
+  const posterRadius = "24px";
+  const posterShadow = config.transparentBackground
+    ? "none"
+    : "var(--tw-shadow, 0 25px 50px -12px rgb(0 0 0 / 0.25))";
+  const posterOverlayColor = config.transparentBackground
+    ? images.bg
+      ? colorWithAlpha("#000000", config.opacity / 100)
+      : "transparent"
+    : colorWithAlpha(config.backgroundColor, config.opacity / 100);
   const selectedElement = selectedElementId ? elements[selectedElementId] : null;
   const selectedElementDefinition =
     selectedElementId && isHorizontalX
@@ -1023,6 +1040,26 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
                     className="w-full h-10 rounded-lg cursor-pointer border-0"
                   />
                 </div>
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-3 py-3">
+                  <input
+                    id="comparison-transparent-background"
+                    type="checkbox"
+                    checked={config.transparentBackground}
+                    onChange={(event) =>
+                      updateConfigField(
+                        "transparentBackground",
+                        event.target.checked,
+                      )
+                    }
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <label
+                    htmlFor="comparison-transparent-background"
+                    className="text-xs font-bold text-foreground"
+                  >
+                    Transparent Background
+                  </label>
+                </div>
                 <div>
                   <label className="block text-xs font-bold text-foreground mb-1">
                     Overlay
@@ -1675,6 +1712,23 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
                   className="w-full h-10 rounded-lg cursor-pointer border-0"
                 />
               </div>
+              <div className="col-span-2 flex items-center gap-3 rounded-xl border border-border bg-card/60 px-3 py-3">
+                <input
+                  id="poster-transparent-background"
+                  type="checkbox"
+                  checked={config.transparentBackground}
+                  onChange={(event) =>
+                    updateConfigField("transparentBackground", event.target.checked)
+                  }
+                  className="h-4 w-4 accent-primary"
+                />
+                <label
+                  htmlFor="poster-transparent-background"
+                  className="text-xs font-bold text-foreground"
+                >
+                  Transparent Background
+                </label>
+              </div>
               <div className="col-span-2">
                 <label className="block text-xs font-bold text-foreground mb-1">
                   Dim Overlay
@@ -2086,7 +2140,7 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
             exportElement(posterRef, exportFilename, setIsExporting, {
               width: layout.canvas.width,
               height: layout.canvas.height,
-              backgroundColor: config.backgroundColor,
+              backgroundColor: exportBackgroundColor,
             })
           }
           disabled={isExporting}
@@ -2101,26 +2155,27 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
         <div
           ref={posterRef}
           onMouseDown={() => isHorizontalX && setSelectedElementId(null)}
-          className="w-full relative overflow-hidden shadow-2xl rounded-[24px]"
+          className="w-full relative overflow-hidden"
           style={{
             maxWidth: `${layout.previewMaxWidth}px`,
             aspectRatio: `${layout.canvas.width} / ${layout.canvas.height}`,
-            backgroundColor: config.backgroundColor,
+            backgroundColor: posterBackgroundColor,
             backgroundImage: images.bg ? `url('${images.bg}')` : undefined,
             backgroundSize: "cover",
             backgroundPosition: "center",
+            borderRadius: posterRadius,
+            boxShadow: posterShadow,
           }}
         >
-          <div
-            className="absolute inset-0 z-0"
-            style={{
-              backgroundColor: colorWithAlpha(
-                config.backgroundColor,
-                config.opacity / 100,
-              ),
-            }}
-          ></div>
-          <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.08),transparent_40%)]"></div>
+            <div
+              className="absolute inset-0 z-0"
+              style={{
+                backgroundColor: posterOverlayColor,
+              }}
+            ></div>
+          {!config.transparentBackground && (
+            <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.08),transparent_40%)]"></div>
+          )}
 
           {isComparisonTemplate ? (
             <ComparisonPosterPreview
