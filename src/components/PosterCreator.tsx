@@ -72,6 +72,10 @@ const getSharedVariantConfig = (config: PosterConfig): Partial<PosterConfig> => 
   topLine2: config.topLine2,
   middleLine1: config.middleLine1,
   middleLine2: config.middleLine2,
+  xBadgeText: config.xBadgeText,
+  xInfoPanelEyebrow: config.xInfoPanelEyebrow,
+  xInfoPanelTitle: config.xInfoPanelTitle,
+  xInfoPanelBody: config.xInfoPanelBody,
   footerName: config.footerName,
   footerTagline: config.footerTagline,
   footerEmail: config.footerEmail,
@@ -266,6 +270,7 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
     setConfig({
       ...defaultPosterConfigByVariant[nextVariant],
       ...getSharedVariantConfig(config),
+      textAlign: defaultPosterConfigByVariant[nextVariant].textAlign,
     });
     setImages(buildVariantImages(nextVariant, images));
     setElements(buildPosterElements(nextVariant));
@@ -285,6 +290,7 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
       ...defaultPosterConfigByVariant[preset.variant],
       ...getBrandingConfig(config),
       ...preset.config,
+      textAlign: defaultPosterConfigByVariant[preset.variant].textAlign,
     });
     setImages(buildVariantImages(preset.variant, images, preset.images));
     setElements(
@@ -518,6 +524,52 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
           </div>
         )}
 
+        {isHorizontalX && (
+          <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
+            <div>
+              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                X Right-Side Copy
+              </h3>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Edit the top badge and right-side card text independently from
+                the main message card.
+              </p>
+            </div>
+            <input
+              type="text"
+              name="xBadgeText"
+              value={config.xBadgeText}
+              onChange={handleInputChange}
+              placeholder="Top badge text"
+              className="input-base rounded-lg px-3 py-2 text-sm"
+            />
+            <input
+              type="text"
+              name="xInfoPanelEyebrow"
+              value={config.xInfoPanelEyebrow}
+              onChange={handleInputChange}
+              placeholder="Side card label"
+              className="input-base rounded-lg px-3 py-2 text-sm"
+            />
+            <input
+              type="text"
+              name="xInfoPanelTitle"
+              value={config.xInfoPanelTitle}
+              onChange={handleInputChange}
+              placeholder="Side card headline"
+              className="input-base rounded-lg px-3 py-2 text-sm"
+            />
+            <textarea
+              name="xInfoPanelBody"
+              value={config.xInfoPanelBody}
+              onChange={handleInputChange}
+              placeholder="Side card supporting text"
+              rows={2}
+              className="input-base rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+        )}
+
         <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
           <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
             Asset Uploads
@@ -664,7 +716,7 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
                   }}
                   className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition ${
                     config.textAlign === align
-                      ? "bg-primary text-white"
+                      ? "bg-primary text-primary-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -897,13 +949,13 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
               }`}
             >
               <p className="text-[10px] font-black uppercase tracking-[0.34em] text-white/[0.55]">
-                Campaign Angle
+                {config.xInfoPanelEyebrow}
               </p>
               <p className="mt-3 text-sm font-bold leading-tight text-white">
-                {config.middleLine2}
+                {config.xInfoPanelTitle}
               </p>
               <p className="mt-3 text-[11px] leading-relaxed text-white/[0.72]">
-                {config.footerTagline}
+                {config.xInfoPanelBody}
               </p>
             </div>
           )}
@@ -929,7 +981,7 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
                   : "hover:ring-1 hover:ring-white/20"
               }`}
             >
-              {layout.badgeText}
+              {config.xBadgeText}
             </div>
           )}
 

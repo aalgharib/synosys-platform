@@ -43,6 +43,10 @@ export interface PosterConfig {
   topLine2: string;
   middleLine1: string;
   middleLine2: string;
+  xBadgeText: string;
+  xInfoPanelEyebrow: string;
+  xInfoPanelTitle: string;
+  xInfoPanelBody: string;
   footerName: string;
   footerTagline: string;
   footerEmail: string;
