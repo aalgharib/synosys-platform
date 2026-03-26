@@ -15,9 +15,33 @@ export interface Branding {
   profilePic: string;
 }
 
-export type PosterVariant = "facebook-instagram" | "x-horizontal";
+export type PosterVariant =
+  | "facebook-instagram"
+  | "x-horizontal"
+  | "comparison-template";
 
 export type PosterTextAlign = "left" | "center" | "right";
+
+export type ComparisonIconId =
+  | "phone-missed"
+  | "clock-3"
+  | "user-x"
+  | "zap"
+  | "calendar-clock"
+  | "calendar-check"
+  | "badge-check"
+  | "message-circle-more"
+  | "headset"
+  | "shield-check"
+  | "trending-up"
+  | "phone-off";
+
+export interface ComparisonBulletItem {
+  id: string;
+  text: string;
+  icon: ComparisonIconId;
+  customIcon?: string | null;
+}
 
 export type PosterElementId =
   | "accent-panel"
@@ -38,6 +62,7 @@ export interface PosterElementState {
 
 export interface PosterConfig {
   accentColor: string;
+  backgroundColor: string;
   opacity: number;
   topLine1: string;
   topLine2: string;
@@ -63,12 +88,51 @@ export interface PosterConfig {
   headlinePos: { x: number; y: number };
   messagePos: { x: number; y: number };
   footerPos: { x: number; y: number };
+  logoPos: { x: number; y: number };
+  logoSize: number;
+  comparisonHeadline: string;
+  comparisonLeftTitle: string;
+  comparisonRightTitle: string;
+  comparisonLeftBullets: ComparisonBulletItem[];
+  comparisonRightBullets: ComparisonBulletItem[];
+  comparisonSupportText: string;
+  comparisonWebsiteText: string;
+  comparisonBusinessName: string;
+  comparisonHeadlineSize: number;
+  comparisonTitleSize: number;
+  comparisonBulletSize: number;
+  comparisonSupportSize: number;
+  comparisonWebsiteSize: number;
+  comparisonBusinessNameSize: number;
+  comparisonLeftPanelColor: string;
+  comparisonRightPanelColor: string;
+  comparisonSupportPanelColor: string;
+  comparisonShowLeftPanel: boolean;
+  comparisonShowRightPanel: boolean;
+  comparisonShowSupportPanel: boolean;
+  comparisonLeftPanelOpacity: number;
+  comparisonRightPanelOpacity: number;
+  comparisonSupportPanelOpacity: number;
+  comparisonDividerColor: string;
+  comparisonDividerX: number;
+  comparisonShowDividers: boolean;
+  comparisonDividerStyle: "solid" | "soft" | "glow";
+  comparisonHeadlineColor: string;
+  comparisonTextColor: string;
+  comparisonMutedTextColor: string;
+  comparisonLeftIconColor: string;
+  comparisonRightIconColor: string;
+  comparisonRowGap: number;
+  comparisonIconSize: number;
 }
 
 export interface PosterImages {
   logo: string;
   qr: string;
   bg: string;
+  comparisonLeftBg: string;
+  comparisonRightBg: string;
+  comparisonSupportBg: string;
 }
 
 export interface ImageConfig {

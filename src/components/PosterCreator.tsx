@@ -1,5 +1,14 @@
 import { Download, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import {
+  ComparisonBulletEditor,
+  ComparisonPosterPreview,
+} from "./posterCreatorComparison";
+import {
+  colorWithAlpha,
+  getComparisonBulletField,
+  type ComparisonSide,
+} from "./posterCreatorComparisonUtils";
 import {
   availableFontFamilies,
   defaultPosterConfigByVariant,
@@ -13,6 +22,7 @@ import {
 } from "../defaults";
 import { useImageExport } from "../hooks/useImageExport";
 import type {
+  ComparisonBulletItem,
   PosterConfig,
   PosterDraft,
   PosterElementId,
@@ -21,8 +31,9 @@ import type {
   PosterTextAlign,
   PosterVariant,
 } from "../types/platform";
+import { createId } from "../utils/createId";
 
-type PosterDragTarget = "headline" | "message" | "footer" | null;
+type PosterDragTarget = "headline" | "message" | "footer" | "logo" | null;
 
 interface PosterCreatorProps {
   draft?: PosterDraft | null;
@@ -67,6 +78,7 @@ const buildPosterElements = (
 
 const getSharedVariantConfig = (config: PosterConfig): Partial<PosterConfig> => ({
   accentColor: config.accentColor,
+  backgroundColor: config.backgroundColor,
   opacity: config.opacity,
   topLine1: config.topLine1,
   topLine2: config.topLine2,
@@ -83,10 +95,12 @@ const getSharedVariantConfig = (config: PosterConfig): Partial<PosterConfig> => 
   footerWeb: config.footerWeb,
   fontFamily: config.fontFamily,
   textAlign: config.textAlign,
+  logoSize: config.logoSize,
 });
 
 const getBrandingConfig = (config: PosterConfig): Partial<PosterConfig> => ({
   accentColor: config.accentColor,
+  backgroundColor: config.backgroundColor,
   opacity: config.opacity,
   footerName: config.footerName,
   footerTagline: config.footerTagline,
@@ -95,18 +109,86 @@ const getBrandingConfig = (config: PosterConfig): Partial<PosterConfig> => ({
   footerWeb: config.footerWeb,
   fontFamily: config.fontFamily,
   textAlign: config.textAlign,
+  logoSize: config.logoSize,
 });
 
 const buildVariantImages = (
   variant: PosterVariant,
   currentImages: PosterImages,
   overrides?: Partial<PosterImages>,
-): PosterImages => ({
-  ...defaultPosterImagesByVariant[variant],
-  logo: currentImages.logo || defaultPosterImagesByVariant[variant].logo,
-  qr: currentImages.qr || defaultPosterImagesByVariant[variant].qr,
-  ...overrides,
-});
+): PosterImages => {
+  const isDefaultBrandLogo = [
+    defaultPosterImagesByVariant["facebook-instagram"].logo,
+    defaultPosterImagesByVariant["x-horizontal"].logo,
+  ].includes(currentImages.logo);
+
+  return {
+    ...defaultPosterImagesByVariant[variant],
+    logo:
+      overrides?.logo ??
+      (variant === "comparison-template" && isDefaultBrandLogo
+        ? defaultPosterImagesByVariant[variant].logo
+        : currentImages.logo || defaultPosterImagesByVariant[variant].logo),
+    qr: currentImages.qr || defaultPosterImagesByVariant[variant].qr,
+    bg:
+      overrides?.bg ??
+      currentImages.bg ??
+      defaultPosterImagesByVariant[variant].bg,
+    comparisonLeftBg:
+      overrides?.comparisonLeftBg ??
+      currentImages.comparisonLeftBg ??
+      defaultPosterImagesByVariant[variant].comparisonLeftBg,
+    comparisonRightBg:
+      overrides?.comparisonRightBg ??
+      currentImages.comparisonRightBg ??
+      defaultPosterImagesByVariant[variant].comparisonRightBg,
+    comparisonSupportBg:
+      overrides?.comparisonSupportBg ??
+      currentImages.comparisonSupportBg ??
+      defaultPosterImagesByVariant[variant].comparisonSupportBg,
+    ...overrides,
+  };
+};
+
+const numericConfigFields = new Set<keyof PosterConfig>([
+  "opacity",
+  "topLine1Size",
+  "topLine2Size",
+  "middleLine1Size",
+  "middleLine2Size",
+  "footerNameSize",
+  "footerMetaSize",
+  "logoSize",
+  "comparisonHeadlineSize",
+  "comparisonTitleSize",
+  "comparisonBulletSize",
+  "comparisonSupportSize",
+  "comparisonWebsiteSize",
+  "comparisonBusinessNameSize",
+  "comparisonLeftPanelOpacity",
+  "comparisonRightPanelOpacity",
+  "comparisonSupportPanelOpacity",
+  "comparisonDividerX",
+  "comparisonRowGap",
+  "comparisonIconSize",
+]);
+
+const readFileAsDataUrl = (
+  file: File,
+  onLoad: (dataUrl: string) => void,
+) => {
+  const reader = new FileReader();
+  reader.onload = (loadEvent) => {
+    const result = loadEvent.target?.result;
+
+    if (typeof result !== "string") {
+      return;
+    }
+
+    onLoad(result);
+  };
+  reader.readAsDataURL(file);
+};
 
 export default function PosterCreator({ draft }: PosterCreatorProps) {
   const initialVariant = resolvePosterVariant(draft);
@@ -133,22 +215,34 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
     (preset) => preset.variant === variant,
   );
   const isHorizontalX = variant === "x-horizontal";
+  const isComparisonTemplate = variant === "comparison-template";
   const selectedElement = selectedElementId ? elements[selectedElementId] : null;
   const selectedElementDefinition =
     selectedElementId && isHorizontalX
       ? horizontalPosterElementDefinitions[selectedElementId]
       : null;
 
+  const updateConfigField = <K extends keyof PosterConfig>(
+    field: K,
+    value: PosterConfig[K],
+  ) => {
+    setActivePresetId(null);
+    setConfig((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
+  };
+
   const handleInputChange = (
     event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = event.target;
+    const field = name as keyof PosterConfig;
 
-    setActivePresetId(null);
-    setConfig((previous) => ({
-      ...previous,
-      [name]: name === "opacity" || name.endsWith("Size") ? Number(value) : value,
-    }));
+    updateConfigField(
+      field,
+      (numericConfigFields.has(field) ? Number(value) : value) as PosterConfig[keyof PosterConfig],
+    );
   };
 
   const handleImageUpload = (
@@ -161,24 +255,86 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (loadEvent) => {
-      const result = loadEvent.target?.result;
-
-      if (!result) {
-        return;
-      }
-
+    readFileAsDataUrl(file, (dataUrl) => {
       setActivePresetId(null);
       setImages((previous) => ({
         ...previous,
-        [key]: result as string,
+        [key]: dataUrl,
       }));
-    };
-    reader.readAsDataURL(file);
+    });
   };
 
-  const updatePosition = (
+  const clearImage = (key: keyof PosterImages) => {
+    setActivePresetId(null);
+    setImages((previous) => ({
+      ...previous,
+      [key]: "",
+    }));
+  };
+
+  const updateBulletGroup = (
+    side: ComparisonSide,
+    nextBullets: ComparisonBulletItem[],
+  ) => {
+    updateConfigField(getComparisonBulletField(side), nextBullets);
+  };
+
+  const updateBullet = (
+    side: ComparisonSide,
+    bulletId: string,
+    patch: Partial<ComparisonBulletItem>,
+  ) => {
+    const field = getComparisonBulletField(side);
+    const nextBullets = config[field].map((bullet) =>
+      bullet.id === bulletId ? { ...bullet, ...patch } : bullet,
+    );
+
+    updateBulletGroup(side, nextBullets);
+  };
+
+  const addBullet = (side: ComparisonSide) => {
+    const field = getComparisonBulletField(side);
+    updateBulletGroup(side, [
+      ...config[field],
+      {
+        id: createId(`comparison-${side}`),
+        text: side === "left" ? "Edit this problem" : "Edit this benefit",
+        icon: side === "left" ? "phone-off" : "badge-check",
+        customIcon: null,
+      },
+    ]);
+  };
+
+  const removeBullet = (side: ComparisonSide, bulletId: string) => {
+    const field = getComparisonBulletField(side);
+
+    if (config[field].length <= 1) {
+      return;
+    }
+
+    updateBulletGroup(
+      side,
+      config[field].filter((bullet) => bullet.id !== bulletId),
+    );
+  };
+
+  const handleBulletIconUpload = (
+    side: ComparisonSide,
+    bulletId: string,
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    readFileAsDataUrl(file, (dataUrl) => {
+      updateBullet(side, bulletId, { customIcon: dataUrl });
+    });
+  };
+
+  const updatePosition = useCallback((
     target: Exclude<PosterDragTarget, null>,
     x: number,
     y: number,
@@ -199,9 +355,13 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
         return { ...previous, messagePos: nextPosition };
       }
 
+      if (target === "logo") {
+        return { ...previous, logoPos: nextPosition };
+      }
+
       return { ...previous, footerPos: nextPosition };
     });
-  };
+  }, [layout.dragBounds]);
 
   const selectElement = (elementId: PosterElementId) => {
     if (!isHorizontalX) {
@@ -257,21 +417,35 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [dragTarget, layout]);
+  }, [dragTarget, layout, updatePosition]);
 
   const handleVariantChange = (nextVariant: PosterVariant) => {
     if (nextVariant === variant) {
       return;
     }
 
+    const nextConfig = {
+      ...defaultPosterConfigByVariant[nextVariant],
+      ...getSharedVariantConfig(config),
+      ...(nextVariant === "comparison-template"
+        ? {
+            comparisonBusinessName:
+              config.footerName ||
+              config.comparisonBusinessName ||
+              defaultPosterConfigByVariant[nextVariant].comparisonBusinessName,
+            comparisonWebsiteText:
+              config.footerWeb ||
+              config.comparisonWebsiteText ||
+              defaultPosterConfigByVariant[nextVariant].comparisonWebsiteText,
+          }
+        : {}),
+      textAlign: defaultPosterConfigByVariant[nextVariant].textAlign,
+    };
+
     setVariant(nextVariant);
     setActivePresetId(null);
     setSelectedElementId(null);
-    setConfig({
-      ...defaultPosterConfigByVariant[nextVariant],
-      ...getSharedVariantConfig(config),
-      textAlign: defaultPosterConfigByVariant[nextVariant].textAlign,
-    });
+    setConfig(nextConfig);
     setImages(buildVariantImages(nextVariant, images));
     setElements(buildPosterElements(nextVariant));
   };
@@ -328,7 +502,9 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
   const exportFilename =
     variant === "x-horizontal"
       ? "SynoSys-X-Horizontal-Poster"
-      : "SynoSys-Poster";
+      : variant === "comparison-template"
+        ? "SynoSys-Comparison-Poster"
+        : "SynoSys-Poster";
 
   const messageVisible = !isHorizontalX || elements["message-card"]?.visible;
   const footerVisible = !isHorizontalX || elements["footer-card"]?.visible;
@@ -574,105 +750,614 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
           <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
             Asset Uploads
           </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <label className="block text-xs font-bold text-foreground">
                 Logo
               </label>
               <input
                 type="file"
+                accept="image/*"
                 onChange={(event) => handleImageUpload(event, "logo")}
                 className="text-xs block w-full file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:px-2 file:py-1"
               />
+              {images.logo && (
+                <button
+                  type="button"
+                  onClick={() => clearImage("logo")}
+                  className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold text-muted-foreground transition hover:bg-accent/60"
+                >
+                  Clear Logo
+                </button>
+              )}
             </div>
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-foreground">
-                QR Code
-              </label>
-              <input
-                type="file"
-                onChange={(event) => handleImageUpload(event, "qr")}
-                className="text-xs block w-full file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:px-2 file:py-1"
-              />
-            </div>
+            {!isComparisonTemplate && (
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-foreground">
+                  QR Code
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => handleImageUpload(event, "qr")}
+                  className="text-xs block w-full file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:px-2 file:py-1"
+                />
+              </div>
+            )}
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <label className="block text-xs font-bold text-foreground">
               Background Image
             </label>
             <input
               type="file"
+              accept="image/*"
               onChange={(event) => handleImageUpload(event, "bg")}
               className="text-xs block w-full file:bg-slate-950 file:text-white file:border-0 file:rounded-md file:px-2 file:py-1"
             />
+            {images.bg && (
+              <button
+                type="button"
+                onClick={() => clearImage("bg")}
+                className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold text-muted-foreground transition hover:bg-accent/60"
+              >
+                Remove Background Image
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="space-y-4">
-          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-            Content & Colors
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1">
-                Accent
-              </label>
-              <input
-                type="color"
-                name="accentColor"
-                value={config.accentColor}
-                onChange={handleInputChange}
-                className="w-full h-10 rounded-lg cursor-pointer border-0"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1">
-                Dim Overlay
-              </label>
-              <input
-                type="range"
-                name="opacity"
-                min="0"
-                max="100"
-                value={config.opacity}
-                onChange={handleInputChange}
-                className="w-full mt-3 accent-primary"
-              />
+        {isComparisonTemplate && (
+          <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+              Comparison Images
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-foreground">
+                  Left Side Image
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => handleImageUpload(event, "comparisonLeftBg")}
+                  className="text-xs block w-full file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:px-2 file:py-1"
+                />
+                {images.comparisonLeftBg && (
+                  <button
+                    type="button"
+                    onClick={() => clearImage("comparisonLeftBg")}
+                    className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold text-muted-foreground transition hover:bg-accent/60"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-foreground">
+                  Right Side Image
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => handleImageUpload(event, "comparisonRightBg")}
+                  className="text-xs block w-full file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:px-2 file:py-1"
+                />
+                {images.comparisonRightBg && (
+                  <button
+                    type="button"
+                    onClick={() => clearImage("comparisonRightBg")}
+                    className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold text-muted-foreground transition hover:bg-accent/60"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-foreground">
+                  Bottom Band Image
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => handleImageUpload(event, "comparisonSupportBg")}
+                  className="text-xs block w-full file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:px-2 file:py-1"
+                />
+                {images.comparisonSupportBg && (
+                  <button
+                    type="button"
+                    onClick={() => clearImage("comparisonSupportBg")}
+                    className="rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold text-muted-foreground transition hover:bg-accent/60"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-          <input
-            type="text"
-            name="topLine1"
-            value={config.topLine1}
-            onChange={handleInputChange}
-            placeholder="Headline 1"
-            className="input-base rounded-lg px-3 py-2 text-sm"
-          />
-          <input
-            type="text"
-            name="topLine2"
-            value={config.topLine2}
-            onChange={handleInputChange}
-            placeholder="Headline 2"
-            className="input-base rounded-lg px-3 py-2 text-sm"
-          />
-          <textarea
-            name="middleLine1"
-            value={config.middleLine1}
-            onChange={handleInputChange}
-            placeholder="Main Message"
-            rows={2}
-            className="input-base rounded-lg px-3 py-2 text-sm"
-          />
-          <input
-            type="text"
-            name="middleLine2"
-            value={config.middleLine2}
-            onChange={handleInputChange}
-            placeholder="Accent Message"
-            className="input-base rounded-lg px-3 py-2 text-sm"
-          />
-        </div>
+        )}
+
+        {isComparisonTemplate ? (
+          <>
+            <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
+              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                Comparison Copy
+              </h3>
+              <input
+                type="text"
+                name="comparisonHeadline"
+                value={config.comparisonHeadline}
+                onChange={handleInputChange}
+                placeholder="Headline"
+                className="input-base rounded-lg px-3 py-2 text-sm"
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  name="comparisonLeftTitle"
+                  value={config.comparisonLeftTitle}
+                  onChange={handleInputChange}
+                  placeholder="Left title"
+                  className="input-base rounded-lg px-3 py-2 text-sm"
+                />
+                <input
+                  type="text"
+                  name="comparisonRightTitle"
+                  value={config.comparisonRightTitle}
+                  onChange={handleInputChange}
+                  placeholder="Right title"
+                  className="input-base rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <input
+                type="text"
+                name="comparisonSupportText"
+                value={config.comparisonSupportText}
+                onChange={handleInputChange}
+                placeholder="Supporting statement"
+                className="input-base rounded-lg px-3 py-2 text-sm"
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  name="comparisonWebsiteText"
+                  value={config.comparisonWebsiteText}
+                  onChange={handleInputChange}
+                  placeholder="Website or CTA"
+                  className="input-base rounded-lg px-3 py-2 text-sm"
+                />
+                <input
+                  type="text"
+                  name="comparisonBusinessName"
+                  value={config.comparisonBusinessName}
+                  onChange={handleInputChange}
+                  placeholder="Business name or tagline"
+                  className="input-base rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <ComparisonBulletEditor
+                bullets={config.comparisonLeftBullets}
+                side="left"
+                iconColor={config.comparisonLeftIconColor}
+                onAdd={() => addBullet("left")}
+                onRemove={(bulletId) => removeBullet("left", bulletId)}
+                onTextChange={(bulletId, text) =>
+                  updateBullet("left", bulletId, { text })
+                }
+                onIconChange={(bulletId, icon) =>
+                  updateBullet("left", bulletId, { icon })
+                }
+                onUpload={(bulletId, event) =>
+                  handleBulletIconUpload("left", bulletId, event)
+                }
+                onResetCustomIcon={(bulletId) =>
+                  updateBullet("left", bulletId, { customIcon: null })
+                }
+              />
+              <ComparisonBulletEditor
+                bullets={config.comparisonRightBullets}
+                side="right"
+                iconColor={config.comparisonRightIconColor}
+                onAdd={() => addBullet("right")}
+                onRemove={(bulletId) => removeBullet("right", bulletId)}
+                onTextChange={(bulletId, text) =>
+                  updateBullet("right", bulletId, { text })
+                }
+                onIconChange={(bulletId, icon) =>
+                  updateBullet("right", bulletId, { icon })
+                }
+                onUpload={(bulletId, event) =>
+                  handleBulletIconUpload("right", bulletId, event)
+                }
+                onResetCustomIcon={(bulletId) =>
+                  updateBullet("right", bulletId, { customIcon: null })
+                }
+              />
+            </div>
+
+            <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
+              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                Comparison Colors
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Accent Glow
+                  </label>
+                  <input
+                    type="color"
+                    name="accentColor"
+                    value={config.accentColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Background
+                  </label>
+                  <input
+                    type="color"
+                    name="backgroundColor"
+                    value={config.backgroundColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Overlay
+                  </label>
+                  <input
+                    type="range"
+                    name="opacity"
+                    min="0"
+                    max="100"
+                    value={config.opacity}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Left Panel
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonLeftPanelColor"
+                    value={config.comparisonLeftPanelColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-3 py-3">
+                  <input
+                    id="comparison-show-left-panel"
+                    type="checkbox"
+                    checked={config.comparisonShowLeftPanel}
+                    onChange={(event) =>
+                      updateConfigField("comparisonShowLeftPanel", event.target.checked)
+                    }
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <label
+                    htmlFor="comparison-show-left-panel"
+                    className="text-xs font-bold text-foreground"
+                  >
+                    Show Left Side
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Left Dim
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonLeftPanelOpacity"
+                    min="0"
+                    max="100"
+                    value={config.comparisonLeftPanelOpacity}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Right Panel
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonRightPanelColor"
+                    value={config.comparisonRightPanelColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-3 py-3">
+                  <input
+                    id="comparison-show-right-panel"
+                    type="checkbox"
+                    checked={config.comparisonShowRightPanel}
+                    onChange={(event) =>
+                      updateConfigField("comparisonShowRightPanel", event.target.checked)
+                    }
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <label
+                    htmlFor="comparison-show-right-panel"
+                    className="text-xs font-bold text-foreground"
+                  >
+                    Show Right Side
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Right Dim
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonRightPanelOpacity"
+                    min="0"
+                    max="100"
+                    value={config.comparisonRightPanelOpacity}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Support Band
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonSupportPanelColor"
+                    value={config.comparisonSupportPanelColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-3 py-3">
+                  <input
+                    id="comparison-show-support-panel"
+                    type="checkbox"
+                    checked={config.comparisonShowSupportPanel}
+                    onChange={(event) =>
+                      updateConfigField("comparisonShowSupportPanel", event.target.checked)
+                    }
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <label
+                    htmlFor="comparison-show-support-panel"
+                    className="text-xs font-bold text-foreground"
+                  >
+                    Show Bottom Band
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Support Dim
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonSupportPanelOpacity"
+                    min="0"
+                    max="100"
+                    value={config.comparisonSupportPanelOpacity}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Divider
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonDividerColor"
+                    value={config.comparisonDividerColor.startsWith("#")
+                      ? config.comparisonDividerColor
+                      : "#ffffff"}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Divider Position
+                  </label>
+                  <input
+                    type="range"
+                    name="comparisonDividerX"
+                    min="35"
+                    max="65"
+                    value={config.comparisonDividerX}
+                    onChange={handleInputChange}
+                    className="w-full mt-3 accent-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Divider Style
+                  </label>
+                  <select
+                    value={config.comparisonDividerStyle}
+                    onChange={(event) =>
+                      updateConfigField(
+                        "comparisonDividerStyle",
+                        event.target.value as PosterConfig["comparisonDividerStyle"],
+                      )
+                    }
+                    className="input-base rounded-lg px-3 py-2 text-sm bg-card"
+                  >
+                    <option value="soft">Soft</option>
+                    <option value="solid">Solid</option>
+                    <option value="glow">Glow</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-3 py-3">
+                  <input
+                    id="comparison-show-dividers"
+                    type="checkbox"
+                    checked={config.comparisonShowDividers}
+                    onChange={(event) =>
+                      updateConfigField("comparisonShowDividers", event.target.checked)
+                    }
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <label
+                    htmlFor="comparison-show-dividers"
+                    className="text-xs font-bold text-foreground"
+                  >
+                    Show Dividers
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Headline Text
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonHeadlineColor"
+                    value={config.comparisonHeadlineColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Primary Text
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonTextColor"
+                    value={config.comparisonTextColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Secondary Text
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonMutedTextColor"
+                    value={config.comparisonMutedTextColor.startsWith("#")
+                      ? config.comparisonMutedTextColor
+                      : "#dbeafe"}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Left Icons
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonLeftIconColor"
+                    value={config.comparisonLeftIconColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    Right Icons
+                  </label>
+                  <input
+                    type="color"
+                    name="comparisonRightIconColor"
+                    value={config.comparisonRightIconColor}
+                    onChange={handleInputChange}
+                    className="w-full h-10 rounded-lg cursor-pointer border-0"
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-4">
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+              Content & Colors
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Accent
+                </label>
+                <input
+                  type="color"
+                  name="accentColor"
+                  value={config.accentColor}
+                  onChange={handleInputChange}
+                  className="w-full h-10 rounded-lg cursor-pointer border-0"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Solid Background
+                </label>
+                <input
+                  type="color"
+                  name="backgroundColor"
+                  value={config.backgroundColor}
+                  onChange={handleInputChange}
+                  className="w-full h-10 rounded-lg cursor-pointer border-0"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Dim Overlay
+                </label>
+                <input
+                  type="range"
+                  name="opacity"
+                  min="0"
+                  max="100"
+                  value={config.opacity}
+                  onChange={handleInputChange}
+                  className="w-full mt-3 accent-primary"
+                />
+              </div>
+            </div>
+            <input
+              type="text"
+              name="topLine1"
+              value={config.topLine1}
+              onChange={handleInputChange}
+              placeholder="Headline 1"
+              className="input-base rounded-lg px-3 py-2 text-sm"
+            />
+            <input
+              type="text"
+              name="topLine2"
+              value={config.topLine2}
+              onChange={handleInputChange}
+              placeholder="Headline 2"
+              className="input-base rounded-lg px-3 py-2 text-sm"
+            />
+            <textarea
+              name="middleLine1"
+              value={config.middleLine1}
+              onChange={handleInputChange}
+              placeholder="Main Message"
+              rows={2}
+              className="input-base rounded-lg px-3 py-2 text-sm"
+            />
+            <input
+              type="text"
+              name="middleLine2"
+              value={config.middleLine2}
+              onChange={handleInputChange}
+              placeholder="Accent Message"
+              className="input-base rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+        )}
 
         <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
           <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
@@ -685,13 +1370,7 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
             <select
               name="fontFamily"
               value={config.fontFamily}
-              onChange={(event) => {
-                setActivePresetId(null);
-                setConfig((previous) => ({
-                  ...previous,
-                  fontFamily: event.target.value,
-                }));
-              }}
+              onChange={(event) => updateConfigField("fontFamily", event.target.value)}
               className="input-base rounded-lg px-3 py-2 text-sm bg-card"
             >
               {availableFontFamilies.map((font) => (
@@ -710,10 +1389,7 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
                 <button
                   key={align}
                   type="button"
-                  onClick={() => {
-                    setActivePresetId(null);
-                    setConfig((previous) => ({ ...previous, textAlign: align }));
-                  }}
+                  onClick={() => updateConfigField("textAlign", align)}
                   className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition ${
                     config.textAlign === align
                       ? "bg-primary text-primary-foreground shadow-sm"
@@ -725,162 +1401,327 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1">
-                Headline Size
-              </label>
-              <input
-                type="range"
-                name="topLine1Size"
-                min="24"
-                max="64"
-                value={config.topLine1Size}
-                onChange={handleInputChange}
-                className="w-full mt-2 accent-primary"
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                {config.topLine1Size}px
-              </p>
+          {isComparisonTemplate ? (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Headline Size
+                </label>
+                <input
+                  type="range"
+                  name="comparisonHeadlineSize"
+                  min="26"
+                  max="64"
+                  value={config.comparisonHeadlineSize}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.comparisonHeadlineSize}px
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Section Title Size
+                </label>
+                <input
+                  type="range"
+                  name="comparisonTitleSize"
+                  min="18"
+                  max="42"
+                  value={config.comparisonTitleSize}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.comparisonTitleSize}px
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Bullet Size
+                </label>
+                <input
+                  type="range"
+                  name="comparisonBulletSize"
+                  min="14"
+                  max="28"
+                  value={config.comparisonBulletSize}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.comparisonBulletSize}px
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Support Size
+                </label>
+                <input
+                  type="range"
+                  name="comparisonSupportSize"
+                  min="18"
+                  max="38"
+                  value={config.comparisonSupportSize}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.comparisonSupportSize}px
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Website / CTA Size
+                </label>
+                <input
+                  type="range"
+                  name="comparisonWebsiteSize"
+                  min="18"
+                  max="46"
+                  value={config.comparisonWebsiteSize}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.comparisonWebsiteSize}px
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Business Text Size
+                </label>
+                <input
+                  type="range"
+                  name="comparisonBusinessNameSize"
+                  min="10"
+                  max="24"
+                  value={config.comparisonBusinessNameSize}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.comparisonBusinessNameSize}px
+                </p>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Logo Size
+                </label>
+                <input
+                  type="range"
+                  name="logoSize"
+                  min="20"
+                  max="180"
+                  value={config.logoSize}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.logoSize}px
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Row Gap
+                </label>
+                <input
+                  type="range"
+                  name="comparisonRowGap"
+                  min="8"
+                  max="28"
+                  value={config.comparisonRowGap}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.comparisonRowGap}px
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Icon Size
+                </label>
+                <input
+                  type="range"
+                  name="comparisonIconSize"
+                  min="14"
+                  max="34"
+                  value={config.comparisonIconSize}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.comparisonIconSize}px
+                </p>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1">
-                Subheadline Size
-              </label>
-              <input
-                type="range"
-                name="topLine2Size"
-                min="18"
-                max="42"
-                value={config.topLine2Size}
-                onChange={handleInputChange}
-                className="w-full mt-2 accent-primary"
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                {config.topLine2Size}px
-              </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Headline Size
+                </label>
+                <input
+                  type="range"
+                  name="topLine1Size"
+                  min="24"
+                  max="64"
+                  value={config.topLine1Size}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.topLine1Size}px
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Subheadline Size
+                </label>
+                <input
+                  type="range"
+                  name="topLine2Size"
+                  min="18"
+                  max="42"
+                  value={config.topLine2Size}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.topLine2Size}px
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Body Size
+                </label>
+                <input
+                  type="range"
+                  name="middleLine1Size"
+                  min="12"
+                  max="28"
+                  value={config.middleLine1Size}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.middleLine1Size}px
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Accent Line Size
+                </label>
+                <input
+                  type="range"
+                  name="middleLine2Size"
+                  min="16"
+                  max="36"
+                  value={config.middleLine2Size}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.middleLine2Size}px
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Footer Title Size
+                </label>
+                <input
+                  type="range"
+                  name="footerNameSize"
+                  min="14"
+                  max="32"
+                  value={config.footerNameSize}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.footerNameSize}px
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Footer Meta Size
+                </label>
+                <input
+                  type="range"
+                  name="footerMetaSize"
+                  min="8"
+                  max="18"
+                  value={config.footerMetaSize}
+                  onChange={handleInputChange}
+                  className="w-full mt-2 accent-primary"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {config.footerMetaSize}px
+                </p>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1">
-                Body Size
-              </label>
-              <input
-                type="range"
-                name="middleLine1Size"
-                min="12"
-                max="28"
-                value={config.middleLine1Size}
-                onChange={handleInputChange}
-                className="w-full mt-2 accent-primary"
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                {config.middleLine1Size}px
-              </p>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1">
-                Accent Line Size
-              </label>
-              <input
-                type="range"
-                name="middleLine2Size"
-                min="16"
-                max="36"
-                value={config.middleLine2Size}
-                onChange={handleInputChange}
-                className="w-full mt-2 accent-primary"
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                {config.middleLine2Size}px
-              </p>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1">
-                Footer Title Size
-              </label>
-              <input
-                type="range"
-                name="footerNameSize"
-                min="14"
-                max="32"
-                value={config.footerNameSize}
-                onChange={handleInputChange}
-                className="w-full mt-2 accent-primary"
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                {config.footerNameSize}px
-              </p>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1">
-                Footer Meta Size
-              </label>
-              <input
-                type="range"
-                name="footerMetaSize"
-                min="8"
-                max="18"
-                value={config.footerMetaSize}
-                onChange={handleInputChange}
-                className="w-full mt-2 accent-primary"
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                {config.footerMetaSize}px
-              </p>
-            </div>
-          </div>
+          )}
           <p className="text-[11px] text-muted-foreground">
-            Drag the headline, message box, and footer box directly on the live
-            poster preview.
+            {isComparisonTemplate
+              ? "Drag the headline, supporting statement, CTA block, and logo directly on the live comparison poster preview."
+              : "Drag the headline, message box, and footer box directly on the live poster preview."}
           </p>
         </div>
 
-        <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
-          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-            Footer Details
-          </h3>
-          <input
-            type="text"
-            name="footerName"
-            value={config.footerName}
-            onChange={handleInputChange}
-            className="input-base rounded-lg px-3 py-2 text-sm"
-          />
-          <input
-            type="text"
-            name="footerTagline"
-            value={config.footerTagline}
-            onChange={handleInputChange}
-            className="input-base rounded-lg px-3 py-2 text-sm"
-          />
-          <div className="grid grid-cols-3 gap-2">
+        {!isComparisonTemplate && (
+          <div className="space-y-4 bg-muted/40 p-4 rounded-2xl border border-border">
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+              Footer Details
+            </h3>
             <input
               type="text"
-              name="footerEmail"
-              value={config.footerEmail}
+              name="footerName"
+              value={config.footerName}
               onChange={handleInputChange}
-              className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] text-foreground"
+              className="input-base rounded-lg px-3 py-2 text-sm"
             />
             <input
               type="text"
-              name="footerPhone"
-              value={config.footerPhone}
+              name="footerTagline"
+              value={config.footerTagline}
               onChange={handleInputChange}
-              className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] text-foreground"
+              className="input-base rounded-lg px-3 py-2 text-sm"
             />
-            <input
-              type="text"
-              name="footerWeb"
-              value={config.footerWeb}
-              onChange={handleInputChange}
-              className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] text-foreground"
-            />
+            <div className="grid grid-cols-3 gap-2">
+              <input
+                type="text"
+                name="footerEmail"
+                value={config.footerEmail}
+                onChange={handleInputChange}
+                className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] text-foreground"
+              />
+              <input
+                type="text"
+                name="footerPhone"
+                value={config.footerPhone}
+                onChange={handleInputChange}
+                className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] text-foreground"
+              />
+              <input
+                type="text"
+                name="footerWeb"
+                value={config.footerWeb}
+                onChange={handleInputChange}
+                className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] text-foreground"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         <button
           onClick={() =>
-            exportElement(posterRef, exportFilename, setIsExporting)
+            exportElement(posterRef, exportFilename, setIsExporting, {
+              width: layout.canvas.width,
+              height: layout.canvas.height,
+              backgroundColor: config.backgroundColor,
+            })
           }
           disabled={isExporting}
           className="button-primary sticky bottom-0 w-full py-4 font-bold shadow-lg"
@@ -894,23 +1735,38 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
         <div
           ref={posterRef}
           onMouseDown={() => isHorizontalX && setSelectedElementId(null)}
-          className="w-full bg-slate-950 relative overflow-hidden shadow-2xl rounded-[24px]"
+          className="w-full relative overflow-hidden shadow-2xl rounded-[24px]"
           style={{
             maxWidth: `${layout.previewMaxWidth}px`,
             aspectRatio: `${layout.canvas.width} / ${layout.canvas.height}`,
-            backgroundImage: `url('${images.bg}')`,
+            backgroundColor: config.backgroundColor,
+            backgroundImage: images.bg ? `url('${images.bg}')` : undefined,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
         >
           <div
-            className="absolute inset-0 z-0 bg-slate-950"
+            className="absolute inset-0 z-0"
             style={{
-              backgroundColor: `rgba(15, 23, 42, ${config.opacity / 100})`,
+              backgroundColor: colorWithAlpha(
+                config.backgroundColor,
+                config.opacity / 100,
+              ),
             }}
           ></div>
           <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.08),transparent_40%)]"></div>
 
+          {isComparisonTemplate ? (
+            <ComparisonPosterPreview
+              config={config}
+              images={images}
+              layout={layout}
+              sharedTextStyle={sharedTextStyle}
+              dragTarget={dragTarget}
+              setDragTarget={(target) => setDragTarget(target)}
+            />
+          ) : (
+            <>
           {accentPanelVisible && (
             <div
               onMouseDown={(event) => {
@@ -960,14 +1816,16 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
             </div>
           )}
 
-          <div className="absolute top-8 left-8 z-20">
-            <img
-              src={images.logo}
-              alt="Logo"
-              className="w-auto object-contain bg-card/5 p-1 rounded-md"
-              style={{ height: `${layout.logoHeight}px` }}
-            />
-          </div>
+          {images.logo && (
+            <div className="absolute top-8 left-8 z-20">
+              <img
+                src={images.logo}
+                alt="Logo"
+                className="w-auto object-contain bg-card/5 p-1 rounded-md"
+                style={{ height: `${layout.logoHeight}px` }}
+              />
+            </div>
+          )}
 
           {badgeVisible && (
             <div
@@ -1140,6 +1998,8 @@ export default function PosterCreator({ draft }: PosterCreatorProps) {
                 {layout.qrCaption}
               </div>
             </div>
+          )}
+            </>
           )}
         </div>
       </div>

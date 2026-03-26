@@ -4,8 +4,24 @@ import type { RefObject } from "react";
 interface HtmlToImage {
   toPng: (
     element: HTMLElement,
-    options?: { quality?: number; pixelRatio?: number; cacheBust?: boolean },
+    options?: {
+      quality?: number;
+      pixelRatio?: number;
+      cacheBust?: boolean;
+      width?: number;
+      height?: number;
+      canvasWidth?: number;
+      canvasHeight?: number;
+      backgroundColor?: string;
+      style?: Partial<CSSStyleDeclaration>;
+    },
   ) => Promise<string>;
+}
+
+interface ExportOptions {
+  width: number;
+  height: number;
+  backgroundColor?: string;
 }
 
 export const useImageExport = () => {
@@ -26,6 +42,7 @@ export const useImageExport = () => {
     ref: RefObject<HTMLDivElement | null>,
     filename: string,
     setIsExporting: (value: boolean) => void,
+    options?: ExportOptions,
   ) => {
     const htmlToImage = (window as unknown as { htmlToImage: HtmlToImage })
       .htmlToImage;
@@ -38,10 +55,21 @@ export const useImageExport = () => {
     setIsExporting(true);
 
     try {
+      const width = options?.width ?? ref.current.offsetWidth;
+      const height = options?.height ?? ref.current.offsetHeight;
       const dataUrl = await htmlToImage.toPng(ref.current, {
         quality: 1,
-        pixelRatio: 2,
+        pixelRatio: 1,
         cacheBust: true,
+        width,
+        height,
+        canvasWidth: width,
+        canvasHeight: height,
+        backgroundColor: options?.backgroundColor,
+        style: {
+          width: `${width}px`,
+          height: `${height}px`,
+        },
       });
 
       const link = document.createElement("a");
