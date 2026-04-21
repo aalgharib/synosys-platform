@@ -15,11 +15,34 @@ if (ffmpegPath) {
 }
 
 /**
+ * Transcription provider resolution:
+ *   1. Groq (preferred — free tier + 10x faster than OpenAI Whisper)
+ *   2. OpenAI Whisper (fallback)
+ *
+ * Both use the OpenAI SDK shape; Groq runs an OpenAI-compatible API.
+ * Set either GROQ_API_KEY or OPENAI_API_KEY (or both — Groq wins).
+ */
+const providers = [
+  {
+    name: "groq" as const,
+    apiKey: () => process.env.GROQ_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1",
+    model: "whisper-large-v3",
+  },
+  {
+    name: "openai" as const,
+    apiKey: () => process.env.OPENAI_API_KEY,
+    baseURL: undefined, // OpenAI default
+    model: "whisper-1",
+  },
+];
+
+/**
  * Transcribe via Whisper.
  *
  * Whisper API has a hard 25 MB upload limit. Raw videos blow past that fast
  * (a 3-min phone clip is ~200 MB). So we extract a compact MP3 audio track
- * first (~1 MB/min), then send that to Whisper.
+ * first (~1 MB/min), then send that to whichever provider is configured.
  */
 export async function POST(request: Request) {
   const workDir = join(tmpdir(), `transcribe-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -33,9 +56,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing videoUrl" }, { status: 400 });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
+    const active = providers.find((p) => p.apiKey());
+    if (!active) {
       return NextResponse.json(
-        { error: "OPENAI_API_KEY not configured" },
+        {
+          error:
+            "No transcription provider configured. Set GROQ_API_KEY (recommended, free at console.groq.com) or OPENAI_API_KEY.",
+        },
         { status: 500 },
       );
     }
@@ -66,29 +93,60 @@ export async function POST(request: Request) {
         .save(audioPath);
     });
 
-    // 3. Send the small MP3 to Whisper with verbose timestamps
     const audioBuf = await readFile(audioPath);
     const audioFile = new File([new Uint8Array(audioBuf)], "audio.mp3", {
       type: "audio/mpeg",
     });
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const result = await openai.audio.transcriptions.create({
-      file: audioFile,
-      model: "whisper-1",
-      response_format: "verbose_json",
-      timestamp_granularities: ["segment", "word"],
-    });
+    // 3. Try the preferred provider, fall back to others on failure.
+    const attempts = providers.filter((p) => p.apiKey());
+    let result: unknown = null;
+    let lastError: string | null = null;
+
+    for (const provider of attempts) {
+      try {
+        const client = new OpenAI({
+          apiKey: provider.apiKey()!,
+          baseURL: provider.baseURL,
+        });
+
+        result = await client.audio.transcriptions.create({
+          file: audioFile,
+          model: provider.model,
+          response_format: "verbose_json",
+          timestamp_granularities: ["segment", "word"],
+        });
+
+        console.log(`Transcribed via ${provider.name} (${provider.model})`);
+        break;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        lastError = `${provider.name}: ${msg}`;
+        console.warn(`Transcription via ${provider.name} failed:`, msg);
+        // If the provider hit a quota/auth error, try the next one.
+        continue;
+      }
+    }
+
+    if (!result) {
+      return NextResponse.json(
+        { error: `All transcription providers failed. ${lastError ?? ""}`.trim() },
+        { status: 502 },
+      );
+    }
+
+    const r = result as {
+      text: string;
+      language?: string;
+      segments?: Array<{ id: number; start: number; end: number; text: string }>;
+      words?: Array<{ word: string; start: number; end: number }>;
+    };
 
     const transcript: Transcript = {
-      text: result.text,
-      language: (result as unknown as { language?: string }).language,
+      text: r.text,
+      language: r.language,
       segments:
-        (
-          result as unknown as {
-            segments?: Array<{ id: number; start: number; end: number; text: string }>;
-          }
-        ).segments?.map((s) => ({
+        r.segments?.map((s) => ({
           id: s.id,
           start: s.start,
           end: s.end,
@@ -96,21 +154,17 @@ export async function POST(request: Request) {
         })) ?? [],
     };
 
-    const words = (
-      result as unknown as {
-        words?: Array<{ word: string; start: number; end: number }>;
-      }
-    ).words;
-    if (words && transcript.segments.length > 0) {
+    // Attach words to segments if the provider returned them
+    if (r.words && transcript.segments.length > 0) {
       transcript.segments = transcript.segments.map((seg) => ({
         ...seg,
-        words: words.filter((w) => w.start >= seg.start && w.end <= seg.end + 0.05),
+        words: r.words!.filter(
+          (w) => w.start >= seg.start && w.end <= seg.end + 0.05,
+        ),
       }));
     }
 
-    // Cleanup
     await cleanupDir(workDir).catch(() => {});
-
     return NextResponse.json(transcript);
   } catch (error) {
     console.error("Transcription failed", error);

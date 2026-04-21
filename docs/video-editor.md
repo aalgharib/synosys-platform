@@ -16,9 +16,12 @@ Set in Vercel → Project Settings → Environment Variables (Production + Previ
 
 | Variable | Purpose |
 | --- | --- |
-| `ANTHROPIC_API_KEY` | Claude chat (composition generation) |
-| `OPENAI_API_KEY` | Whisper transcription |
-| `BLOB_READ_WRITE_TOKEN` | Auto-populated when you add a Blob store |
+| `ANTHROPIC_API_KEY` | Claude chat (composition generation) — **required** |
+| `GROQ_API_KEY` | Whisper transcription (preferred — free tier, 10x faster) — **required if no OPENAI_API_KEY** |
+| `OPENAI_API_KEY` | Whisper transcription fallback — **required if no GROQ_API_KEY** |
+| `BLOB_READ_WRITE_TOKEN` | Auto-populated when you add a Blob store — **required** |
+
+Transcription uses Groq when `GROQ_API_KEY` is set (drop-in OpenAI-compatible API, much faster, free), otherwise falls back to OpenAI Whisper.
 
 Local: copy `.env.example` to `.env.local` and fill in your keys. For Blob, run `vercel env pull .env.local`.
 

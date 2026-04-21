@@ -5,17 +5,18 @@ export const runtime = "nodejs";
 /**
  * Diagnostic endpoint for debugging env var + Blob Store connection.
  * Visit /api/video/health in a browser. Does NOT expose any secret values —
- * only reports whether each required env var is present and its length.
+ * only reports whether each env var is present and its length.
  */
 export async function GET() {
-  const required = [
+  const trackedVars = [
     "ANTHROPIC_API_KEY",
     "OPENAI_API_KEY",
+    "GROQ_API_KEY",
     "BLOB_READ_WRITE_TOKEN",
   ] as const;
 
   const envStatus = Object.fromEntries(
-    required.map((key) => {
+    trackedVars.map((key) => {
       const value = process.env[key];
       return [
         key,
@@ -28,14 +29,32 @@ export async function GET() {
     }),
   );
 
-  const allPresent = required.every((k) => Boolean(process.env[k]));
+  // Required: Anthropic, Blob, and at least one transcription provider
+  const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
+  const hasBlob = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  const hasTranscription =
+    Boolean(process.env.GROQ_API_KEY) || Boolean(process.env.OPENAI_API_KEY);
+
+  const missing: string[] = [];
+  if (!hasAnthropic) missing.push("ANTHROPIC_API_KEY");
+  if (!hasBlob) missing.push("BLOB_READ_WRITE_TOKEN");
+  if (!hasTranscription) missing.push("GROQ_API_KEY or OPENAI_API_KEY");
+
+  const ok = missing.length === 0;
+  const transcriptionProvider = process.env.GROQ_API_KEY
+    ? "groq (preferred)"
+    : process.env.OPENAI_API_KEY
+      ? "openai"
+      : "none";
 
   return NextResponse.json(
     {
-      ok: allPresent,
-      message: allPresent
+      ok,
+      message: ok
         ? "All required env vars are set."
-        : "One or more env vars are missing. See `env` for details.",
+        : `Missing: ${missing.join(", ")}`,
+      missing,
+      transcriptionProvider,
       env: envStatus,
       runtime: {
         region: process.env.VERCEL_REGION ?? null,
@@ -43,6 +62,6 @@ export async function GET() {
         commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
       },
     },
-    { status: allPresent ? 200 : 503 },
+    { status: ok ? 200 : 503 },
   );
 }
