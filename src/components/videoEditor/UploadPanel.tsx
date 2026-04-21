@@ -55,6 +55,22 @@ export default function UploadPanel({
     // hands out a signed token; the browser uploads the file bytes straight
     // to Blob storage, bypassing the 4.5 MB serverless body limit.
     try {
+      // Pre-flight: verify server has its env vars before attempting upload.
+      // Otherwise the SDK can retry a broken token forever.
+      const health = await fetch("/api/video/health").then((r) => r.json());
+      if (!health.ok) {
+        const missing = Object.entries(health.env as Record<string, { present: boolean }>)
+          .filter(([, v]) => !v.present)
+          .map(([k]) => k);
+        throw new Error(
+          `Server is missing env vars: ${missing.join(", ")}. ${
+            missing.includes("BLOB_READ_WRITE_TOKEN")
+              ? "Connect a Vercel Blob Store and redeploy."
+              : "Set these in Vercel → Settings → Environment Variables and redeploy."
+          }`,
+        );
+      }
+
       const safeName = `videos/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
       const blob = await upload(safeName, file, {
