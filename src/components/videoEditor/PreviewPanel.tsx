@@ -96,7 +96,7 @@ export default function PreviewPanel({
       */}
       <div
         className="flex items-center justify-center overflow-hidden bg-black"
-        style={{ height: "min(55vh, 560px)" }}
+        style={{ height: "min(75vh, 760px)" }}
       >
         <div
           style={{

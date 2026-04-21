@@ -4,7 +4,7 @@ import ffmpeg from "fluent-ffmpeg";
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import { NextResponse } from "next/server";
 import { tmpdir } from "os";
-import { join } from "path";
+import { dirname, join } from "path";
 import type {
   CaptionOperation,
   TitleOperation,
@@ -347,15 +347,63 @@ function applyHighlight(text: string, highlight?: string): string {
     .join(" ");
 }
 
+// Minimal 2x2 black PNG (88 bytes). Used as a looped still-image input for title
+// cards — avoids ffmpeg's `lavfi` demuxer which isn't available in the Vercel
+// ffmpeg-static binary. ffmpeg scales this up to the target dimensions.
+const BLACK_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAADElEQVR42mNkYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC";
+
+/** Write a 2x2 black PNG to disk. We'll scale it to full size via ffmpeg. */
+async function writeBlackPng(targetPath: string): Promise<void> {
+  await writeFile(targetPath, Buffer.from(BLACK_PNG_BASE64, "base64"));
+}
+
+/** Write a silent stereo 16-bit PCM WAV file of the given duration. */
+async function writeSilentWav(
+  targetPath: string,
+  durationSec: number,
+): Promise<void> {
+  const sampleRate = 44100;
+  const numSamples = Math.round(sampleRate * durationSec);
+  const dataSize = numSamples * 4; // 2 channels × 2 bytes/sample
+  const buf = Buffer.alloc(44 + dataSize);
+  let off = 0;
+  buf.write("RIFF", off); off += 4;
+  buf.writeUInt32LE(36 + dataSize, off); off += 4;
+  buf.write("WAVE", off); off += 4;
+  buf.write("fmt ", off); off += 4;
+  buf.writeUInt32LE(16, off); off += 4; // fmt chunk size
+  buf.writeUInt16LE(1, off); off += 2; // PCM format
+  buf.writeUInt16LE(2, off); off += 2; // num channels (stereo)
+  buf.writeUInt32LE(sampleRate, off); off += 4;
+  buf.writeUInt32LE(sampleRate * 4, off); off += 4; // byte rate
+  buf.writeUInt16LE(4, off); off += 2; // block align
+  buf.writeUInt16LE(16, off); off += 2; // bits per sample
+  buf.write("data", off); off += 4;
+  buf.writeUInt32LE(dataSize, off); off += 4;
+  // remaining bytes already zeroed by Buffer.alloc → silence
+  await writeFile(targetPath, buf);
+}
+
 async function renderTitleCard(
   title: TitleOperation,
   outputPath: string,
   opts: { width: number; height: number; fps: number },
 ): Promise<void> {
+  const workDir = dirname(outputPath);
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const blackPng = join(workDir, `black-${suffix}.png`);
+  const silentWav = join(workDir, `silent-${suffix}.wav`);
+
+  await writeBlackPng(blackPng);
+  await writeSilentWav(silentWav, title.duration);
+
   const escapedTitle = escapeDrawText(title.text);
   const escapedSubtitle = title.subtitle ? escapeDrawText(title.subtitle) : "";
 
+  // Scale 2x2 PNG up to target, then overlay drawtext
   const filters: string[] = [
+    `scale=${opts.width}:${opts.height}`,
     `drawtext=text='${escapedTitle}':fontcolor=white:fontsize=72:x=(w-text_w)/2:y=(h-text_h)/2-60`,
   ];
   if (escapedSubtitle) {
@@ -366,11 +414,18 @@ async function renderTitleCard(
 
   await new Promise<void>((resolve, reject) => {
     ffmpeg()
-      .input(`color=c=black:s=${opts.width}x${opts.height}:r=${opts.fps}:d=${title.duration}`)
-      .inputFormat("lavfi")
-      .input(`anullsrc=channel_layout=stereo:sample_rate=44100`)
-      .inputFormat("lavfi")
-      .inputOptions([`-t`, `${title.duration}`])
+      // Video input: loop the black PNG for the title duration
+      .input(blackPng)
+      .inputOptions([
+        "-loop",
+        "1",
+        "-framerate",
+        `${opts.fps}`,
+        "-t",
+        `${title.duration}`,
+      ])
+      // Audio input: silent WAV matching the duration
+      .input(silentWav)
       .videoFilters(filters)
       .videoCodec("libx264")
       .audioCodec("aac")
@@ -382,11 +437,17 @@ async function renderTitleCard(
         "-shortest",
         "-movflags",
         "+faststart",
+        "-r",
+        `${opts.fps}`,
       ])
       .on("end", () => resolve())
       .on("error", reject)
       .save(outputPath);
   });
+
+  // Clean up the temp inputs; the encoded title card mp4 is what we return
+  await unlink(blackPng).catch(() => {});
+  await unlink(silentWav).catch(() => {});
 }
 
 function escapeDrawText(text: string): string {
