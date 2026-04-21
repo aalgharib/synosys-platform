@@ -7,10 +7,23 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Environment variables — NEVER commit these
+.env
+.env.local
+.env.*.local
+
 node_modules
 dist
 dist-ssr
 *.local
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Vercel
+.vercel
 
 # Editor directories and files
 .vscode/*

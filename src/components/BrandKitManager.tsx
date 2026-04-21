@@ -44,6 +44,7 @@ export default function BrandKitManager({
   const [draft, setDraft] = useState<BrandKit>(selectedBrandKit);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- TODO: refactor to derive from selectedBrandKit
     setDraft(selectedBrandKit);
   }, [selectedBrandKit]);
 

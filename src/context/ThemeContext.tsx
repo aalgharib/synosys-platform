@@ -32,8 +32,13 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<ThemeMode>(() => getStoredTheme() ?? "system");
-  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() => getSystemTheme());
+  // Start with the same neutral defaults on server and first client render so
+  // hydration matches. The inline theme-init script in app/layout.tsx has already
+  // set the correct CSS class on <html>, so there's no visual flash — only React
+  // state needs to be synced in the first effect.
+  const [theme, setThemeState] = useState<ThemeMode>("system");
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>("light");
+  const [hydrated, setHydrated] = useState<boolean>(false);
 
   const resolvedTheme = useMemo(
     () => resolveTheme(theme, systemTheme),
@@ -51,11 +56,31 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     });
   }, []);
 
+  // On first mount, hydrate the real theme from localStorage + system.
+  // The set-state-in-effect pattern is intentional here: the server doesn't
+  // have access to localStorage or window.matchMedia, so we use neutral
+  // defaults for SSR and then sync the real values after hydration.
+  /* eslint-disable react-hooks/set-state-in-effect -- SSR hydration sync */
   useEffect(() => {
+    const stored = getStoredTheme();
+    if (stored) {
+      setThemeState(stored);
+    }
+    setSystemTheme(getSystemTheme());
+    setHydrated(true);
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Apply theme to <html> and persist to localStorage once hydrated.
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
     applyTheme(theme, systemTheme);
     window.localStorage.setItem("synosys-theme", theme);
-  }, [systemTheme, theme]);
+  }, [hydrated, systemTheme, theme]);
 
+  // Watch system theme changes.
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -63,7 +88,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       setSystemTheme(mediaQuery.matches ? "dark" : "light");
     };
 
-    handleChange();
     mediaQuery.addEventListener("change", handleChange);
 
     return () => {
@@ -84,7 +108,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme() {
   const context = useContext(ThemeContext);
 

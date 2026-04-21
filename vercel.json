@@ -1,5 +1,19 @@
 {
-  "framework": "vite",
+  "framework": "nextjs",
   "buildCommand": "npm run build",
-  "outputDirectory": "dist"
+  "functions": {
+    "app/api/video/render/route.ts": {
+      "maxDuration": 300,
+      "memory": 3008
+    },
+    "app/api/video/transcribe/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/video/chat/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/video/upload/route.ts": {
+      "maxDuration": 60
+    }
+  }
 }

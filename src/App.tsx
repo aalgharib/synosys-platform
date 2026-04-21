@@ -1,3 +1,5 @@
+"use client";
+
 import {
   BriefcaseBusiness,
   ChevronRight,
@@ -5,6 +7,7 @@ import {
   Layout,
   Menu,
   Target,
+  Video,
   X,
   Youtube,
 } from "lucide-react";
@@ -21,6 +24,7 @@ import Dashboard from "./components/Dashboard";
 import LeadTracker from "./components/LeadTracker";
 import PosterCreator from "./components/PosterCreator";
 import ThemeToggle from "./components/ThemeToggle";
+import VideoEditor from "./components/VideoEditor";
 import YoutubeThumbnailCreator from "./components/YoutubeThumbnailCreator";
 import { ThemeProvider } from "./context/ThemeContext";
 import { defaultBranding } from "./defaults";
@@ -107,6 +111,14 @@ function AppShell() {
         description:
           "Hook viewers with high-CTR thumbnails featuring glowing text.",
         color: "red",
+      },
+      {
+        id: "video",
+        name: "Video Editor",
+        icon: <Video size={20} />,
+        description:
+          "Upload a clip, chat with Claude to add captions, trims, and title cards, then export.",
+        color: "blue",
       },
       {
         id: "leads",
@@ -319,6 +331,7 @@ function AppShell() {
                 draft={thumbnailDraft}
               />
             )}
+            {activeTab === "video" && <VideoEditor />}
             {activeTab === "leads" && (
               <LeadTracker
                 campaigns={campaigns}
