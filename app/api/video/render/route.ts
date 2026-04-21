@@ -385,6 +385,56 @@ async function writeSilentWav(
   await writeFile(targetPath, buf);
 }
 
+/**
+ * Build an ASS subtitle file for a single title card. We burn the text using
+ * the `ass` filter (which ffmpeg-static on Vercel does include) instead of
+ * `drawtext` (which needs freetype and isn't compiled in).
+ */
+function buildTitleCardAss(
+  title: TitleOperation,
+  opts: { width: number; height: number },
+): string {
+  const end = formatAssTime(title.duration);
+  const cx = Math.round(opts.width / 2);
+  const titleY = Math.round(opts.height / 2 - 60);
+  const subtitleY = Math.round(opts.height / 2 + 60);
+
+  const header = `[Script Info]
+Title: Synosys Title Card
+ScriptType: v4.00+
+PlayResX: ${opts.width}
+PlayResY: ${opts.height}
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Title,Inter,96,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,5,60,60,0,1
+Style: Sub,Inter,40,&H00AAAAAA,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,5,60,60,0,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`;
+
+  const titleText = escapeAssText(title.text);
+  let events = `Dialogue: 0,0:00:00.00,${end},Title,,0,0,0,,{\\an5\\pos(${cx},${titleY})}${titleText}\n`;
+  if (title.subtitle) {
+    const subText = escapeAssText(title.subtitle);
+    events += `Dialogue: 0,0:00:00.00,${end},Sub,,0,0,0,,{\\an5\\pos(${cx},${subtitleY})}${subText}\n`;
+  }
+
+  return header + events;
+}
+
+/** Escape characters that have special meaning in ASS dialogue text. */
+function escapeAssText(text: string): string {
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/\{/g, "\\{")
+    .replace(/\}/g, "\\}")
+    .replace(/\n/g, "\\N");
+}
+
 async function renderTitleCard(
   title: TitleOperation,
   outputPath: string,
@@ -394,23 +444,14 @@ async function renderTitleCard(
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const blackPng = join(workDir, `black-${suffix}.png`);
   const silentWav = join(workDir, `silent-${suffix}.wav`);
+  const titleAss = join(workDir, `title-${suffix}.ass`);
 
   await writeBlackPng(blackPng);
   await writeSilentWav(silentWav, title.duration);
+  await writeFile(titleAss, buildTitleCardAss(title, opts), "utf8");
 
-  const escapedTitle = escapeDrawText(title.text);
-  const escapedSubtitle = title.subtitle ? escapeDrawText(title.subtitle) : "";
-
-  // Scale 2x2 PNG up to target, then overlay drawtext
-  const filters: string[] = [
-    `scale=${opts.width}:${opts.height}`,
-    `drawtext=text='${escapedTitle}':fontcolor=white:fontsize=72:x=(w-text_w)/2:y=(h-text_h)/2-60`,
-  ];
-  if (escapedSubtitle) {
-    filters.push(
-      `drawtext=text='${escapedSubtitle}':fontcolor=0xAAAAAA:fontsize=32:x=(w-text_w)/2:y=(h-text_h)/2+60`,
-    );
-  }
+  // ASS filter needs its path properly escaped for Windows/POSIX
+  const assFilterPath = titleAss.replace(/\\/g, "/").replace(/:/g, "\\:");
 
   await new Promise<void>((resolve, reject) => {
     ffmpeg()
@@ -426,7 +467,10 @@ async function renderTitleCard(
       ])
       // Audio input: silent WAV matching the duration
       .input(silentWav)
-      .videoFilters(filters)
+      .videoFilters([
+        `scale=${opts.width}:${opts.height}`,
+        `ass='${assFilterPath}'`,
+      ])
       .videoCodec("libx264")
       .audioCodec("aac")
       .outputOptions([
@@ -448,15 +492,9 @@ async function renderTitleCard(
   // Clean up the temp inputs; the encoded title card mp4 is what we return
   await unlink(blackPng).catch(() => {});
   await unlink(silentWav).catch(() => {});
+  await unlink(titleAss).catch(() => {});
 }
 
-function escapeDrawText(text: string): string {
-  return text
-    .replace(/\\/g, "\\\\")
-    .replace(/:/g, "\\:")
-    .replace(/'/g, "\\'")
-    .replace(/,/g, "\\,");
-}
 
 function summarizeOps(ops: VideoOperation[]): string {
   const counts: Record<string, number> = {};
