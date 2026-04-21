@@ -34,6 +34,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing composition" }, { status: 400 });
     }
 
+    // Hard fail on empty compositions. Rendering a no-op composition just
+    // re-encodes the source and produces a file indistinguishable from the
+    // input — wastes Vercel function time + Blob storage + bandwidth, and
+    // looks like a bug to the user ("the render set output to input!").
+    if (!composition.operations || composition.operations.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Composition has no edits to apply. Add captions, cuts, titles, or zooms (try 'Auto-Direct with Claude' or 'Cut Silent Gaps') before exporting.",
+        },
+        { status: 400 },
+      );
+    }
+
+    console.log(
+      `Render starting: ${composition.operations.length} op(s) ·`,
+      summarizeOps(composition.operations),
+    );
+
     await mkdir(workDir, { recursive: true });
 
     // Download source video
@@ -376,6 +395,16 @@ function escapeDrawText(text: string): string {
     .replace(/:/g, "\\:")
     .replace(/'/g, "\\'")
     .replace(/,/g, "\\,");
+}
+
+function summarizeOps(ops: VideoOperation[]): string {
+  const counts: Record<string, number> = {};
+  for (const op of ops) {
+    counts[op.type] = (counts[op.type] ?? 0) + 1;
+  }
+  return Object.entries(counts)
+    .map(([type, n]) => `${n} ${type}`)
+    .join(", ");
 }
 
 async function cleanupDir(dir: string): Promise<void> {

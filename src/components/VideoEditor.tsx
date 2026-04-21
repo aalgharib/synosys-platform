@@ -412,7 +412,17 @@ export default function VideoEditor() {
             <button
               type="button"
               onClick={handleExport}
-              disabled={!composition || status === "rendering" || !videoUrl}
+              disabled={
+                !composition ||
+                status === "rendering" ||
+                !videoUrl ||
+                composition.operations.length === 0
+              }
+              title={
+                composition && composition.operations.length === 0
+                  ? "Add at least one edit (captions, cuts, title, or zoom) before exporting"
+                  : "Export the edited video as MP4"
+              }
               className="flex items-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-lg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {status === "rendering" ? (
@@ -424,6 +434,11 @@ export default function VideoEditor() {
                 <>
                   <Download size={18} />
                   Export MP4
+                  {composition && composition.operations.length > 0 && (
+                    <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-black tabular-nums">
+                      {composition.operations.length}
+                    </span>
+                  )}
                 </>
               )}
             </button>
@@ -440,6 +455,11 @@ export default function VideoEditor() {
             />
           ))}
         </div>
+
+        {/* Composition breakdown / empty-state warning */}
+        {videoUrl && composition && (
+          <OpsSummary composition={composition} />
+        )}
 
         {renderedUrl && (
           <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
@@ -567,6 +587,61 @@ function stateForStep(
   if (currentIdx > stepIdx) return "done";
   if (currentIdx === stepIdx) return "active";
   return "pending";
+}
+
+/**
+ * Shows what's in the current composition so the user knows exactly what
+ * will be rendered. If empty, warns that Export would produce an unedited copy.
+ */
+function OpsSummary({ composition }: { composition: VideoComposition }) {
+  const counts = composition.operations.reduce<Record<string, number>>(
+    (acc, op) => {
+      acc[op.type] = (acc[op.type] ?? 0) + 1;
+      return acc;
+    },
+    {},
+  );
+  const total = composition.operations.length;
+
+  if (total === 0) {
+    return (
+      <div className="mt-4 flex items-center gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-amber-100">
+        <AlertCircle size={16} className="shrink-0" />
+        <p className="flex-1">
+          <strong className="font-black">No edits yet.</strong> Click{" "}
+          <span className="font-bold">Auto-Direct</span> or{" "}
+          <span className="font-bold">Cut Silent Gaps</span> below — or describe
+          edits in the chat — before exporting. Otherwise the MP4 will match the
+          source.
+        </p>
+      </div>
+    );
+  }
+
+  const labels: Record<string, string> = {
+    caption: "caption",
+    cut: "cut",
+    trim: "trim",
+    title: "title card",
+    zoom: "zoom",
+  };
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-white/80">
+      <span className="font-bold uppercase tracking-widest text-white/50">
+        Will render
+      </span>
+      {Object.entries(counts).map(([type, n]) => (
+        <span
+          key={type}
+          className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 font-semibold"
+        >
+          {n} {labels[type] ?? type}
+          {n > 1 && type !== "zoom" ? "s" : ""}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function QuickActionCard({

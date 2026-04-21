@@ -86,37 +86,54 @@ export default function PreviewPanel({
         </div>
       )}
 
-      <div className="bg-black">
-        {showRendered ? (
-          <video
-            key={renderedUrl}
-            src={renderedUrl!}
-            controls
-            loop
-            playsInline
-            style={{
-              width: "100%",
-              aspectRatio: `${composition.width} / ${composition.height}`,
-              display: "block",
-            }}
-          />
-        ) : (
-          <Player
-            component={PreviewComposition}
-            inputProps={{ composition }}
-            durationInFrames={durationInFrames}
-            compositionWidth={composition.width}
-            compositionHeight={composition.height}
-            fps={composition.fps}
-            controls
-            loop
-            style={{
-              width: "100%",
-              aspectRatio: `${composition.width} / ${composition.height}`,
-            }}
-            acknowledgeRemotionLicense
-          />
-        )}
+      {/*
+        Fit-to-screen strategy for tall (9:16) reel videos:
+        - Outer: fixed viewport-based height (70vh, capped at 720px).
+          Full column width, black letterbox background.
+        - Inner: preserves aspect ratio via height=100% + aspect-ratio.
+          max-width: 100% lets it shrink if the column is narrower than the
+          aspect-ratio-derived width (browser collapses height to maintain ratio).
+      */}
+      <div
+        className="flex items-center justify-center overflow-hidden bg-black"
+        style={{ height: "min(55vh, 560px)" }}
+      >
+        <div
+          style={{
+            height: "100%",
+            aspectRatio: `${composition.width} / ${composition.height}`,
+            maxWidth: "100%",
+          }}
+        >
+          {showRendered ? (
+            <video
+              key={renderedUrl}
+              src={renderedUrl!}
+              controls
+              loop
+              playsInline
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                display: "block",
+              }}
+            />
+          ) : (
+            <Player
+              component={PreviewComposition}
+              inputProps={{ composition }}
+              durationInFrames={durationInFrames}
+              compositionWidth={composition.width}
+              compositionHeight={composition.height}
+              fps={composition.fps}
+              controls
+              loop
+              style={{ width: "100%", height: "100%" }}
+              acknowledgeRemotionLicense
+            />
+          )}
+        </div>
       </div>
     </div>
   );
