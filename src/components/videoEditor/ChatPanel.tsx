@@ -2,6 +2,8 @@
 
 import { Send, Loader2, Sparkles } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type {
   ChatMessage,
   Transcript,
@@ -98,13 +100,21 @@ export default function ChatPanel({
             className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${
+              className={`rounded-2xl px-4 py-3 text-sm ${
                 m.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-foreground"
+                  ? "max-w-[85%] bg-primary text-primary-foreground"
+                  : "max-w-full bg-muted text-foreground"
               }`}
             >
-              <p className="whitespace-pre-wrap">{m.content}</p>
+              {m.role === "user" ? (
+                <p className="whitespace-pre-wrap">{m.content}</p>
+              ) : (
+                <div className="chat-markdown">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {m.content}
+                  </ReactMarkdown>
+                </div>
+              )}
               {m.composition && (
                 <p className="mt-2 text-xs opacity-70">
                   ✓ Composition updated ({m.composition.operations.length} op

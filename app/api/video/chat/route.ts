@@ -7,15 +7,21 @@ import type {
 } from "../../../../src/types/videoEditor";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Claude can take up to 2-3 minutes on long creative briefs (big prompts + big JSON output).
+// Vercel Pro allows up to 300s.
+export const maxDuration = 300;
 
-const SYSTEM_PROMPT = `You are a video editor assistant inside the Synosys platform.
+const SYSTEM_PROMPT = `You are a senior video editor + short-form director working inside the Synosys platform.
 
-The user has uploaded a short video (max 3 minutes) and wants to edit it by describing changes in natural language. You MUST respond with structured JSON in this exact shape:
+The user has uploaded a video (max 3 minutes) and can either:
+  (a) give you direct edit instructions ("add captions", "trim the first 2s"), or
+  (b) hand you a full creative brief and ask for editorial direction.
+
+Either way, you MUST respond with structured JSON in this exact shape:
 
 {
-  "reply": "A short 1-2 sentence message explaining what you changed.",
-  "composition": { ... full VideoComposition object ... }
+  "reply": string,          // markdown-friendly message to the user (see rules below)
+  "composition": { ... }    // full VideoComposition object
 }
 
 The VideoComposition schema:
@@ -68,15 +74,15 @@ Each Operation is one of:
    }
 
 Rules:
-- Always return the FULL composition (you can modify the operations array, but include everything).
-- When the user asks for "captions for what I said," use the transcript provided to generate caption operations for each segment. Use the segment times directly. Break long segments into shorter on-screen lines (~6-10 words each). Time them precisely. Add "highlight" for emotionally important words.
-- Keep caption durations 1.5s - 4s. Do not let captions overlap in time.
-- Highlight important keywords (nouns, verbs, numbers) in captions.
+- Always return the FULL composition. If the user's message is creative direction only (no edits to make), return the composition unchanged — but still include it.
+- The "reply" field is markdown. It can be 1 sentence or a full structured response, whichever the user's request warrants. If the user asks for a director's brief, a beat sheet, hook options, CTAs, hashtags, etc., put those in "reply" as markdown. Keep it focused — no preamble.
+- When the user asks for captions synced to their speech, use the transcript timestamps. Break long segments into shorter on-screen lines (~6-10 words each). Caption durations 1.5s - 4s. Don't overlap. Highlight important keywords (nouns, verbs, numbers, numbers like "10 PM", "Monday", emotional words).
+- For a director's beat sheet, also translate the key beats into caption + zoom + title operations in the composition, so the preview reflects the plan.
+- Prefer short, punchy on-screen text (≤6 words on the hook frame, ≤10 words on body captions). Never transcribe full sentences verbatim — edit them.
 - Default to 1080x1920 vertical reel format.
-- If the user asks something vague, make a reasonable editorial choice and explain it briefly in "reply".
-- If the request is impossible or needs clarification, explain in "reply" and return the composition unchanged.
+- If a request is impossible or needs clarification, explain in "reply" and return the composition unchanged.
 
-Return ONLY valid JSON, no markdown fences, no prose outside the JSON.`;
+CRITICAL: Return ONLY valid JSON. No markdown fences around the outer JSON. No prose before or after. The JSON is parsed directly.`;
 
 interface ChatRequestBody {
   messages: ChatMessage[];
