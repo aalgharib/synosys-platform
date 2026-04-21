@@ -282,26 +282,14 @@ export default function VideoEditor() {
         const text = await res.text();
         throw new Error(parseApiError(text));
       }
-      const data: {
-        url: string;
-        downloadUrl?: string;
-        sourceDeleted?: boolean;
-      } = await res.json();
+      const data: { url: string; downloadUrl?: string } = await res.json();
       setRenderedUrl(data.url);
       setRenderedDownloadUrl(data.downloadUrl ?? data.url);
       setAllRenderedUrls((prev) => [...prev, data.url]);
-      // Source was auto-deleted server-side to save Blob storage. Clear the
-      // videoUrl in the UI so we don't show a broken state, but the composition
-      // is still renderable via the rendered URL.
-      if (data.sourceDeleted) {
-        setVideoUrl(null);
-      }
       setStatus("rendered");
       pushToast(
         "success",
-        data.sourceDeleted
-          ? "Render complete · source video auto-deleted to save storage."
-          : "Render complete — your video is ready to download.",
+        "Render complete — your video is ready. Tap 'Rendered MP4' in the preview to watch the final cut.",
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Render failed";
@@ -530,8 +518,8 @@ export default function VideoEditor() {
         </div>
       )}
 
-      {/* Chat + Preview */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+      {/* Chat + Preview — items-start so each panel manages its own height independently */}
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_1fr]">
         <ChatPanel
           messages={messages}
           transcript={transcript}
@@ -539,7 +527,7 @@ export default function VideoEditor() {
           disabled={!videoUrl}
           onSend={handleSend}
         />
-        <PreviewPanel composition={composition} />
+        <PreviewPanel composition={composition} renderedUrl={renderedUrl} />
       </div>
 
       {/* Transcript debug (collapsed) */}

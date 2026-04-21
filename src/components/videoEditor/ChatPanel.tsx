@@ -109,7 +109,14 @@ export default function ChatPanel({
   };
 
   return (
-    <div className="surface-card flex h-full flex-col rounded-2xl border border-border">
+    <div
+      className="surface-card flex flex-col rounded-2xl border border-border"
+      style={{
+        // Cap chat to a fraction of viewport so the messages area scrolls
+        // internally instead of pushing the whole page down.
+        height: "min(75vh, 800px)",
+      }}
+    >
       <div className="flex items-center gap-2 border-b border-border p-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <Sparkles size={16} />
@@ -124,8 +131,8 @@ export default function ChatPanel({
 
       <div
         ref={scrollRef}
-        className="flex-1 space-y-3 overflow-y-auto p-4"
-        style={{ minHeight: 300 }}
+        className="custom-scrollbar flex-1 space-y-3 overflow-y-auto p-4"
+        style={{ minHeight: 0 }}
       >
         {messages.length === 0 && !sending && (
           <div className="flex flex-col gap-4">

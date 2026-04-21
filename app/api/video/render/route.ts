@@ -1,4 +1,4 @@
-import { del, put } from "@vercel/blob";
+import { put } from "@vercel/blob";
 import ffmpegPath from "ffmpeg-static";
 import ffmpeg from "fluent-ffmpeg";
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
@@ -225,15 +225,6 @@ export async function POST(request: Request) {
       },
     );
 
-    // Auto-delete the original source video now that we've successfully rendered.
-    // The user has the output; the raw upload is just waste taking up Blob storage.
-    // Non-fatal — log and continue if delete fails.
-    try {
-      await del(composition.videoUrl);
-    } catch (cleanupErr) {
-      console.warn("Source cleanup failed (non-fatal)", cleanupErr);
-    }
-
     // Cleanup /tmp
     await cleanupDir(workDir).catch(() => {});
 
@@ -241,10 +232,14 @@ export async function POST(request: Request) {
     //   url         — for inline playback / sharing
     //   downloadUrl — sends Content-Disposition: attachment so browsers download
     //                 instead of opening in a tab (cross-origin `download` attr is ignored)
+    //
+    // NOTE: source video is NOT auto-deleted. That broke iterative editing
+    // (preview can't re-play after export). User cleans up manually via the
+    // "Clear storage" button when they're done with the session.
     return NextResponse.json({
       url: blob.url,
       downloadUrl: blob.downloadUrl,
-      sourceDeleted: true,
+      sourceDeleted: false,
     });
   } catch (error) {
     console.error("Render failed", error);
