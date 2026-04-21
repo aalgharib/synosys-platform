@@ -58,3 +58,26 @@ Supported operations: `trim`, `cut`, `caption`, `title`, `zoom`.
 - Background music library
 - Multiple source clips + multi-track editing
 - Project persistence (localStorage → Supabase)
+
+## Cost management
+
+Vercel Blob charges for three things: storage size ($0.023/GB/mo), data transfer ($0.36/GB egress), and function invocations. For video, **egress dominates**.
+
+### Built-in cost safeguards
+
+1. **Auto-delete source after render** — `/api/video/render` calls `del(composition.videoUrl)` once the rendered MP4 is safely uploaded. The raw upload (typically 150–200 MB) is wiped; only the 40–50 MB output remains.
+2. **"Clear storage" button** — top-right of the Video Editor hero. Deletes every Blob URL from the current session (source + all renders) via `/api/video/cleanup`. One click, resets the editor to upload state.
+3. **Session-prefixed render paths** — renders go under `videos/rendered/<sessionId>/<timestamp>-output.mp4`. The client generates a `sessionId` per editor mount (`crypto.randomUUID()`) and sends it as `x-session-id` on the render request. Makes future "purge all of session X" trivial.
+
+### Optional: protect the cleanup endpoint
+
+By default `/api/video/cleanup` is open (fine for a single-user demo). To require a secret, set `CLEANUP_SECRET` in Vercel env vars. The client must then send it as `x-cleanup-secret` header.
+
+### Migration path (when you outgrow Blob)
+
+Supabase Storage is ~4× cheaper on egress ($0.09 vs $0.36/GB) and you already pay for Supabase Pro. The migration is isolated to three files:
+- `app/api/video/upload/route.ts` (swap `handleUpload` → Supabase signed upload URL)
+- `app/api/video/render/route.ts` (swap `put()` → Supabase upload)
+- `app/api/video/cleanup/route.ts` (swap `del()` → Supabase remove)
+
+Keep Vercel Functions for the ffmpeg runtime. Only the storage layer moves.

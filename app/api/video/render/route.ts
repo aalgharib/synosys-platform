@@ -1,4 +1,4 @@
-import { put } from "@vercel/blob";
+import { del, put } from "@vercel/blob";
 import ffmpegPath from "ffmpeg-static";
 import ffmpeg from "fluent-ffmpeg";
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
@@ -190,10 +190,14 @@ export async function POST(request: Request) {
         .save(outputPath);
     });
 
-    // Upload rendered video to Blob
+    // Upload rendered video to Blob. Pathname is prefixed with session id so
+    // future cleanup-by-prefix ops can wipe all renders from one session cheaply.
+    const sessionId =
+      request.headers.get("x-session-id") ??
+      new Date().toISOString().slice(0, 10); // fallback: yyyy-mm-dd
     const outputBuf = await readFile(outputPath);
     const blob = await put(
-      `videos/rendered/${Date.now()}-output.mp4`,
+      `videos/rendered/${sessionId}/${Date.now()}-output.mp4`,
       outputBuf,
       {
         access: "public",
@@ -202,10 +206,27 @@ export async function POST(request: Request) {
       },
     );
 
-    // Cleanup
+    // Auto-delete the original source video now that we've successfully rendered.
+    // The user has the output; the raw upload is just waste taking up Blob storage.
+    // Non-fatal — log and continue if delete fails.
+    try {
+      await del(composition.videoUrl);
+    } catch (cleanupErr) {
+      console.warn("Source cleanup failed (non-fatal)", cleanupErr);
+    }
+
+    // Cleanup /tmp
     await cleanupDir(workDir).catch(() => {});
 
-    return NextResponse.json({ url: blob.url });
+    // Return both URLs:
+    //   url         — for inline playback / sharing
+    //   downloadUrl — sends Content-Disposition: attachment so browsers download
+    //                 instead of opening in a tab (cross-origin `download` attr is ignored)
+    return NextResponse.json({
+      url: blob.url,
+      downloadUrl: blob.downloadUrl,
+      sourceDeleted: true,
+    });
   } catch (error) {
     console.error("Render failed", error);
     await cleanupDir(workDir).catch(() => {});

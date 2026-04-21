@@ -9,6 +9,7 @@ import {
   Loader2,
   Scissors,
   Sparkles,
+  Trash2,
   Video,
   Wand2,
   X,
@@ -69,6 +70,17 @@ export default function VideoEditor() {
   const [composition, setComposition] = useState<VideoComposition | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [renderedUrl, setRenderedUrl] = useState<string | null>(null);
+  const [renderedDownloadUrl, setRenderedDownloadUrl] = useState<string | null>(null);
+  // Track every rendered URL from this session so "Clear storage" can wipe them all.
+  const [allRenderedUrls, setAllRenderedUrls] = useState<string[]>([]);
+  const [clearingStorage, setClearingStorage] = useState<boolean>(false);
+  // Session id — generated once per editor mount. Sent to the render route so
+  // outputs are grouped under a session prefix in Blob.
+  const [sessionId] = useState<string>(() =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  );
   const [renderStartedAt, setRenderStartedAt] = useState<number | null>(null);
   const [renderElapsed, setRenderElapsed] = useState<number>(0);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -102,6 +114,8 @@ export default function VideoEditor() {
   const handleUploadStart = useCallback(() => {
     setStatus("uploading");
     setRenderedUrl(null);
+    setRenderedDownloadUrl(null);
+    setAllRenderedUrls([]);
   }, []);
 
   const handleUploaded = useCallback(
@@ -112,6 +126,7 @@ export default function VideoEditor() {
       setComposition(emptyComposition(url, duration));
       setMessages([]);
       setRenderedUrl(null);
+      setRenderedDownloadUrl(null);
       pushToast("success", "Uploaded. Transcribing audio now…");
 
       try {
@@ -250,23 +265,44 @@ export default function VideoEditor() {
     if (!composition) return;
     setStatus("rendering");
     setRenderedUrl(null);
+    setRenderedDownloadUrl(null);
     setRenderStartedAt(Date.now());
     setRenderElapsed(0);
 
     try {
       const res = await fetch("/api/video/render", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-session-id": sessionId,
+        },
         body: JSON.stringify({ composition }),
       });
       if (!res.ok) {
         const text = await res.text();
         throw new Error(parseApiError(text));
       }
-      const data: { url: string } = await res.json();
+      const data: {
+        url: string;
+        downloadUrl?: string;
+        sourceDeleted?: boolean;
+      } = await res.json();
       setRenderedUrl(data.url);
+      setRenderedDownloadUrl(data.downloadUrl ?? data.url);
+      setAllRenderedUrls((prev) => [...prev, data.url]);
+      // Source was auto-deleted server-side to save Blob storage. Clear the
+      // videoUrl in the UI so we don't show a broken state, but the composition
+      // is still renderable via the rendered URL.
+      if (data.sourceDeleted) {
+        setVideoUrl(null);
+      }
       setStatus("rendered");
-      pushToast("success", "Render complete — your video is ready to download.");
+      pushToast(
+        "success",
+        data.sourceDeleted
+          ? "Render complete · source video auto-deleted to save storage."
+          : "Render complete — your video is ready to download.",
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Render failed";
       pushToast("error", `Render failed: ${message}`);
@@ -274,7 +310,55 @@ export default function VideoEditor() {
     } finally {
       setRenderStartedAt(null);
     }
-  }, [composition, pushToast]);
+  }, [composition, pushToast, sessionId]);
+
+  /**
+   * One-click "Clear storage": deletes all Blob files this session created.
+   * Source is usually already gone (auto-deleted after render), but we include
+   * it in case the user never rendered. Also resets the editor state.
+   */
+  const handleClearStorage = useCallback(async () => {
+    const urls = [
+      ...(videoUrl ? [videoUrl] : []),
+      ...allRenderedUrls,
+    ];
+    if (urls.length === 0) {
+      pushToast("info", "Nothing to clear — no Blob files from this session.");
+      return;
+    }
+
+    setClearingStorage(true);
+    try {
+      const res = await fetch("/api/video/cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls }),
+      });
+      if (!res.ok) {
+        throw new Error(parseApiError(await res.text()));
+      }
+      const data: { deleted: number } = await res.json();
+      pushToast(
+        "success",
+        `Cleared ${data.deleted} file${data.deleted === 1 ? "" : "s"} from Vercel Blob.`,
+      );
+      // Reset editor state
+      setVideoUrl(null);
+      setVideoDuration(0);
+      setTranscript(null);
+      setComposition(null);
+      setMessages([]);
+      setRenderedUrl(null);
+      setRenderedDownloadUrl(null);
+      setAllRenderedUrls([]);
+      setStatus("idle");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Cleanup failed";
+      pushToast("error", `Cleanup failed: ${message}`);
+    } finally {
+      setClearingStorage(false);
+    }
+  }, [videoUrl, allRenderedUrls, pushToast]);
 
   const handleUploadError = useCallback(
     (message: string) => {
@@ -320,24 +404,42 @@ export default function VideoEditor() {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={!composition || status === "rendering" || !videoUrl}
-            className="flex items-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-lg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {status === "rendering" ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Rendering {renderElapsed}s
-              </>
-            ) : (
-              <>
-                <Download size={18} />
-                Export MP4
-              </>
+          <div className="flex flex-wrap items-center gap-2">
+            {(videoUrl || allRenderedUrls.length > 0) && (
+              <button
+                type="button"
+                onClick={handleClearStorage}
+                disabled={clearingStorage || status === "rendering"}
+                title="Delete all Blob files from this session to avoid storage costs"
+                className="flex items-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-4 py-3 text-xs font-bold text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {clearingStorage ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Trash2 size={14} />
+                )}
+                Clear storage
+              </button>
             )}
-          </button>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={!composition || status === "rendering" || !videoUrl}
+              className="flex items-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-lg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {status === "rendering" ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Rendering {renderElapsed}s
+                </>
+              ) : (
+                <>
+                  <Download size={18} />
+                  Export MP4
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Pipeline status pills */}
@@ -356,8 +458,9 @@ export default function VideoEditor() {
             <Film size={18} className="text-white/80" />
             <p className="flex-1 text-sm text-white">Your video is ready.</p>
             <a
-              href={renderedUrl}
-              download
+              // Use downloadUrl (Content-Disposition: attachment) so the browser
+              // actually downloads instead of opening — cross-origin `download` is ignored.
+              href={renderedDownloadUrl ?? renderedUrl}
               className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-foreground hover:bg-white/90"
             >
               Download
