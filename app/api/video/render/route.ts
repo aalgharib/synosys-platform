@@ -77,15 +77,33 @@ export async function POST(request: Request) {
 
     const keepSegments = computeKeepSegments(trimStart, trimEnd, cuts);
 
+    const W = composition.width;
+    const H = composition.height;
+    const scaleAndCrop = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H}`;
+
     await new Promise<void>((resolve, reject) => {
       const cmd = ffmpeg(inputPath);
 
       if (keepSegments.length === 1) {
-        cmd.setStartTime(keepSegments[0].start).setDuration(
-          keepSegments[0].end - keepSegments[0].start,
-        );
+        // Simple path: trim via -ss/-t, scale via -vf.
+        // (-vf is fine here because we're NOT using filter_complex.)
+        cmd
+          .setStartTime(keepSegments[0].start)
+          .setDuration(keepSegments[0].end - keepSegments[0].start)
+          .videoCodec("libx264")
+          .audioCodec("aac")
+          .outputOptions([
+            "-vf",
+            scaleAndCrop,
+            "-preset",
+            "veryfast",
+            "-movflags",
+            "+faststart",
+          ]);
       } else {
-        // Build concat filter for multiple segments
+        // Multi-segment path: build filter_complex that does trim + concat + scale
+        // all in one graph. You CAN'T mix -filter_complex with -vf on the same
+        // output — ffmpeg rejects it with "Invalid argument".
         const filterParts: string[] = [];
         keepSegments.forEach((seg, i) => {
           filterParts.push(
@@ -98,28 +116,29 @@ export async function POST(request: Request) {
         const concatInputs = keepSegments
           .map((_, i) => `[v${i}][a${i}]`)
           .join("");
+        // Concat → intermediate [cv]/[outa], then scale+crop → [outv]
         filterParts.push(
-          `${concatInputs}concat=n=${keepSegments.length}:v=1:a=1[outv][outa]`,
+          `${concatInputs}concat=n=${keepSegments.length}:v=1:a=1[cv][outa]`,
         );
-        cmd.complexFilter(filterParts).outputOptions([
-          "-map",
-          "[outv]",
-          "-map",
-          "[outa]",
-        ]);
+        filterParts.push(`[cv]${scaleAndCrop}[outv]`);
+
+        cmd
+          .complexFilter(filterParts)
+          .outputOptions([
+            "-map",
+            "[outv]",
+            "-map",
+            "[outa]",
+            "-preset",
+            "veryfast",
+            "-movflags",
+            "+faststart",
+          ])
+          .videoCodec("libx264")
+          .audioCodec("aac");
       }
 
       cmd
-        .videoCodec("libx264")
-        .audioCodec("aac")
-        .outputOptions([
-          `-vf`,
-          `scale=${composition.width}:${composition.height}:force_original_aspect_ratio=increase,crop=${composition.width}:${composition.height}`,
-          "-preset",
-          "veryfast",
-          "-movflags",
-          "+faststart",
-        ])
         .on("end", () => resolve())
         .on("error", (err) => reject(err))
         .save(trimmedPath);

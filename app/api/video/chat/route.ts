@@ -162,17 +162,9 @@ ${JSON.stringify(
     }
 
     const raw = textBlock.text.trim();
-    // Strip any accidental markdown fences
-    const cleaned = raw
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
-
-    let parsed: { reply: string; composition: VideoComposition };
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      console.error("Failed to parse Claude JSON:", cleaned.slice(0, 500));
+    const parsed = extractJsonResponse(raw);
+    if (!parsed) {
+      console.error("Failed to parse Claude JSON. First 800 chars:", raw.slice(0, 800));
       throw new Error("Claude returned invalid JSON");
     }
 
@@ -202,4 +194,60 @@ ${JSON.stringify(
       { status: 500 },
     );
   }
+}
+
+/**
+ * Robustly extract { reply, composition } from Claude's text response.
+ *
+ * Claude sometimes wraps JSON in markdown fences, adds preamble like
+ * "Here's the updated composition:", or appends closing remarks. This
+ * function tries several strategies to find the JSON payload.
+ */
+function extractJsonResponse(
+  raw: string,
+): { reply: string; composition: VideoComposition } | null {
+  const candidates = generateJsonCandidates(raw);
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        typeof parsed.reply === "string" &&
+        parsed.composition &&
+        Array.isArray(parsed.composition.operations)
+      ) {
+        return parsed as { reply: string; composition: VideoComposition };
+      }
+    } catch {
+      // not valid JSON — try next candidate
+    }
+  }
+  return null;
+}
+
+function generateJsonCandidates(raw: string): string[] {
+  const trimmed = raw.trim();
+  const candidates: string[] = [trimmed];
+
+  // 1. Strip outer markdown fences (```json ... ``` or ``` ... ```)
+  const fenceStripped = trimmed
+    .replace(/^```(?:json|JSON)?\s*\n?/i, "")
+    .replace(/\n?\s*```\s*$/i, "")
+    .trim();
+  if (fenceStripped !== trimmed) candidates.push(fenceStripped);
+
+  // 2. Find the first ```json ... ``` block anywhere in the text
+  const fencedMatch = trimmed.match(/```(?:json|JSON)?\s*\n?([\s\S]*?)\n?\s*```/);
+  if (fencedMatch?.[1]) candidates.push(fencedMatch[1].trim());
+
+  // 3. Extract from first { to last } — handles prose before/after JSON
+  const firstBrace = trimmed.indexOf("{");
+  const lastBrace = trimmed.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    candidates.push(trimmed.slice(firstBrace, lastBrace + 1));
+  }
+
+  return candidates;
 }
