@@ -174,25 +174,68 @@ const Caption: React.FC<{ op: CaptionOperation; startFrame: number; endFrame: nu
   );
 };
 
-const ZoomLayer: React.FC<{ op: ZoomOperation; startFrame: number; endFrame: number }> = ({
-  op,
-  startFrame,
-  endFrame,
-}) => {
+/**
+ * Compute the active zoom scale/origin at the current frame by scanning zoom ops.
+ * Returns scale=1 when no zoom is active.
+ */
+function getActiveZoom(
+  zooms: ZoomOperation[],
+  frame: number,
+  fps: number,
+  timelineOffsetFrames: number,
+): { scale: number; originX: number; originY: number } {
+  for (const op of zooms) {
+    const startFrame = timelineOffsetFrames + Math.round(op.start * fps);
+    const endFrame = timelineOffsetFrames + Math.round(op.end * fps);
+    if (frame < startFrame || frame > endFrame) continue;
+    const duration = Math.max(endFrame - startFrame, 1);
+    const t = (frame - startFrame) / duration;
+    // ease-in for first half, hold at peak for second half
+    const eased = t < 0.5 ? 1 - Math.pow(1 - t * 2, 2) : 1;
+    const scale = 1 + (op.scale - 1) * eased;
+    return {
+      scale,
+      originX: (op.x ?? 0.5) * 100,
+      originY: (op.y ?? 0.5) * 100,
+    };
+  }
+  return { scale: 1, originX: 50, originY: 50 };
+}
+
+/**
+ * Video segment with zoom applied — wraps the OffthreadVideo in a scaled container
+ * so zoom actually affects the visible frame (not an empty overlay).
+ */
+const ZoomableVideo: React.FC<{
+  videoUrl: string;
+  startFromFrames: number;
+  endAtFrames: number;
+  zooms: ZoomOperation[];
+  timelineOffsetFrames: number;
+}> = ({ videoUrl, startFromFrames, endAtFrames, zooms, timelineOffsetFrames }) => {
   const frame = useCurrentFrame();
-  if (frame < startFrame || frame > endFrame) return null;
-  const t = (frame - startFrame) / Math.max(endFrame - startFrame, 1);
-  const curve = t < 0.5 ? t * 2 : 1; // ease-in to max, hold
-  const scale = 1 + (op.scale - 1) * curve;
-  const cx = (op.x ?? 0.5) * 100;
-  const cy = (op.y ?? 0.5) * 100;
+  const { fps } = useVideoConfig();
+  const { scale, originX, originY } = getActiveZoom(
+    zooms,
+    frame,
+    fps,
+    timelineOffsetFrames,
+  );
   return (
     <AbsoluteFill
       style={{
         transform: `scale(${scale})`,
-        transformOrigin: `${cx}% ${cy}%`,
+        transformOrigin: `${originX}% ${originY}%`,
+        overflow: "hidden",
       }}
-    />
+    >
+      <OffthreadVideo
+        src={videoUrl}
+        startFrom={startFromFrames}
+        endAt={endAtFrames}
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+      />
+    </AbsoluteFill>
   );
 };
 
@@ -261,34 +304,24 @@ export const PreviewComposition: React.FC<{ composition: VideoComposition }> = (
         );
       })}
 
-      {/* Video segments (with optional zoom wrapper) */}
+      {/* Video segments — each wrapped in a zoom container so zoom actually scales the video */}
       {videoSegments.map((seg, i) => {
-        const startFromSeconds = seg.sourceStart;
         return (
           <Sequence
             key={`video-${i}`}
             from={seg.from}
             durationInFrames={seg.durationInFrames}
           >
-            <OffthreadVideo
-              src={composition.videoUrl}
-              startFrom={Math.round(startFromSeconds * fps)}
-              endAt={Math.round(seg.sourceEnd * fps)}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            <ZoomableVideo
+              videoUrl={composition.videoUrl}
+              startFromFrames={Math.round(seg.sourceStart * fps)}
+              endAtFrames={Math.round(seg.sourceEnd * fps)}
+              zooms={zooms}
+              timelineOffsetFrames={startTitleFrames}
             />
           </Sequence>
         );
       })}
-
-      {/* Zoom overlays (applied relative to timeline) */}
-      {zooms.map((op, i) => (
-        <ZoomLayer
-          key={`zoom-${i}`}
-          op={op}
-          startFrame={startTitleFrames + Math.round(op.start * fps)}
-          endFrame={startTitleFrames + Math.round(op.end * fps)}
-        />
-      ))}
 
       {/* Captions (timeline-relative, offset after start title) */}
       {captions.map((op, i) => (

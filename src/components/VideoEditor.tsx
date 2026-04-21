@@ -7,11 +7,18 @@ import {
   Download,
   Film,
   Loader2,
+  Scissors,
   Sparkles,
   Video,
+  Wand2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  detectSilenceCuts,
+  mergeCuts,
+  totalSilenceDuration,
+} from "../lib/videoEditor/silenceDetector";
 import type {
   ChatMessage,
   Transcript,
@@ -21,6 +28,16 @@ import { emptyComposition } from "../types/videoEditor";
 import ChatPanel from "./videoEditor/ChatPanel";
 import PreviewPanel from "./videoEditor/PreviewPanel";
 import UploadPanel from "./videoEditor/UploadPanel";
+
+const AUTO_DIRECT_PROMPT = `Act as a senior short-form video director. I've given you the full transcript. Create a complete editorial plan for this clip as a vertical reel:
+
+1. Add a bold title card at the start with a 5-word hook that stops a muted scroll.
+2. Add animated word-level captions synced to the transcript timestamps. Highlight the most emotionally loaded words in amber.
+3. Cut any silent pauses, filler breaths, or dead air between sentences (use cut operations).
+4. Add subtle zoom punch-ins (1.08× scale) on key emotional beats — lines the audience should remember.
+5. Structure the video as a 3-act arc: hook (first 5s) → tension (middle) → payoff + implicit CTA (last 5s).
+
+Translate ALL of this into composition operations (title, caption, cut, zoom). In the "reply" field, explain your 4-6 key editorial choices in bullet points — focus on WHY each choice serves a viewer scrolling muted at night.`;
 
 type Status =
   | "idle"
@@ -170,6 +187,64 @@ export default function VideoEditor() {
     },
     [composition, messages, transcript, pushToast],
   );
+
+  /**
+   * One-click "Auto-Direct": sends a curated director prompt to Claude.
+   * Works with whatever transcript exists; the chat endpoint already receives it.
+   */
+  const handleAutoDirect = useCallback(async () => {
+    if (!composition) return;
+    if (!transcript) {
+      pushToast(
+        "error",
+        "Auto-director needs a transcript. Wait for transcription to finish and try again.",
+      );
+      return;
+    }
+    await handleSend(AUTO_DIRECT_PROMPT);
+  }, [composition, transcript, handleSend, pushToast]);
+
+  /**
+   * One-click "Cut Silence": uses transcript gaps to generate cut ops locally.
+   * Zero API calls — deterministic, fast, reversible via undo (user edits composition).
+   */
+  const handleCutSilence = useCallback(() => {
+    if (!composition || !transcript) {
+      pushToast(
+        "error",
+        "Cut silence needs a transcript. Wait for transcription to finish and try again.",
+      );
+      return;
+    }
+
+    const cuts = detectSilenceCuts(transcript, composition.videoDuration, {
+      minGapSeconds: 0.6,
+    });
+
+    if (cuts.length === 0) {
+      pushToast("info", "No silent gaps longer than 0.6s detected — nothing to cut.");
+      return;
+    }
+
+    const updated = mergeCuts(composition, cuts);
+    setComposition(updated);
+
+    const saved = totalSilenceDuration(cuts);
+    pushToast(
+      "success",
+      `Added ${cuts.length} cut${cuts.length === 1 ? "" : "s"} · ${saved.toFixed(1)}s of silence removed`,
+    );
+
+    // Record this as an assistant message so the chat history reflects what happened
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: `Cut ${cuts.length} silent gap${cuts.length === 1 ? "" : "s"} (${saved.toFixed(1)}s total) detected from transcript pauses.`,
+        composition: updated,
+      },
+    ]);
+  }, [composition, transcript, pushToast]);
 
   const handleExport = useCallback(async () => {
     if (!composition) return;
@@ -326,6 +401,32 @@ export default function VideoEditor() {
         status={uploadStatus}
       />
 
+      {/* Quick Actions — only shown after upload is done */}
+      {videoUrl && (
+        <div className="grid gap-3 md:grid-cols-2">
+          <QuickActionCard
+            icon={<Wand2 size={22} />}
+            tone="primary"
+            title="Auto-Direct with Claude"
+            description="Claude analyzes the transcript and builds a full editorial plan: hook title, captions, cuts, zooms, 3-act structure."
+            actionLabel="Direct this video"
+            onClick={handleAutoDirect}
+            disabled={!transcript || status === "rendering"}
+            disabledReason={!transcript ? "Waiting for transcript…" : undefined}
+          />
+          <QuickActionCard
+            icon={<Scissors size={22} />}
+            tone="neutral"
+            title="Cut Silent Gaps"
+            description="Automatically remove pauses, breaths, and dead air between spoken lines — based on transcript timestamps."
+            actionLabel="Cut silence"
+            onClick={handleCutSilence}
+            disabled={!transcript || status === "rendering"}
+            disabledReason={!transcript ? "Waiting for transcript…" : undefined}
+          />
+        </div>
+      )}
+
       {/* Chat + Preview */}
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
         <ChatPanel
@@ -375,6 +476,61 @@ function stateForStep(
   if (currentIdx > stepIdx) return "done";
   if (currentIdx === stepIdx) return "active";
   return "pending";
+}
+
+function QuickActionCard({
+  icon,
+  tone,
+  title,
+  description,
+  actionLabel,
+  onClick,
+  disabled,
+  disabledReason,
+}: {
+  icon: React.ReactNode;
+  tone: "primary" | "neutral";
+  title: string;
+  description: string;
+  actionLabel: string;
+  onClick: () => void;
+  disabled?: boolean;
+  disabledReason?: string;
+}) {
+  const iconTone =
+    tone === "primary"
+      ? "bg-primary/15 text-primary"
+      : "bg-muted text-foreground";
+  const buttonTone =
+    tone === "primary"
+      ? "bg-primary text-primary-foreground hover:brightness-110"
+      : "border border-border bg-card text-foreground hover:bg-accent";
+
+  return (
+    <div className="surface-card flex flex-col gap-3 rounded-2xl border border-border p-5">
+      <div className="flex items-start gap-3">
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${iconTone}`}
+        >
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-black text-foreground">{title}</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className={`mt-1 flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${buttonTone}`}
+      >
+        {disabled && disabledReason ? disabledReason : actionLabel}
+      </button>
+    </div>
+  );
 }
 
 function StatusPill({
