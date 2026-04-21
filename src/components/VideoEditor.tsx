@@ -1,7 +1,17 @@
 "use client";
 
-import { Download, Loader2, Film, Video } from "lucide-react";
-import { useCallback, useState } from "react";
+import {
+  AlertCircle,
+  Check,
+  Circle,
+  Download,
+  Film,
+  Loader2,
+  Sparkles,
+  Video,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   ChatMessage,
   Transcript,
@@ -20,6 +30,20 @@ type Status =
   | "rendering"
   | "rendered";
 
+type Toast = {
+  id: number;
+  tone: "error" | "success" | "info";
+  message: string;
+};
+
+const STATUS_STEPS: Array<{ key: Status; label: string }> = [
+  { key: "uploading", label: "Upload" },
+  { key: "transcribing", label: "Transcribe" },
+  { key: "ready", label: "Edit" },
+  { key: "rendering", label: "Render" },
+  { key: "rendered", label: "Done" },
+];
+
 export default function VideoEditor() {
   const [status, setStatus] = useState<Status>("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -28,7 +52,40 @@ export default function VideoEditor() {
   const [composition, setComposition] = useState<VideoComposition | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [renderedUrl, setRenderedUrl] = useState<string | null>(null);
-  const [renderError, setRenderError] = useState<string | null>(null);
+  const [renderStartedAt, setRenderStartedAt] = useState<number | null>(null);
+  const [renderElapsed, setRenderElapsed] = useState<number>(0);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const pushToast = useCallback((tone: Toast["tone"], message: string) => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, tone, message }]);
+    // Auto-dismiss success/info after 5s; errors stay until dismissed.
+    if (tone !== "error") {
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 5000);
+    }
+  }, []);
+
+  const dismissToast = useCallback((id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  // Render stopwatch
+  useEffect(() => {
+    if (status !== "rendering" || !renderStartedAt) {
+      return;
+    }
+    const interval = setInterval(() => {
+      setRenderElapsed(Math.floor((Date.now() - renderStartedAt) / 1000));
+    }, 250);
+    return () => clearInterval(interval);
+  }, [status, renderStartedAt]);
+
+  const handleUploadStart = useCallback(() => {
+    setStatus("uploading");
+    setRenderedUrl(null);
+  }, []);
 
   const handleUploaded = useCallback(
     async (url: string, duration: number) => {
@@ -38,8 +95,8 @@ export default function VideoEditor() {
       setComposition(emptyComposition(url, duration));
       setMessages([]);
       setRenderedUrl(null);
+      pushToast("success", "Uploaded. Transcribing audio now…");
 
-      // Kick off transcription (non-blocking for chat)
       try {
         const res = await fetch("/api/video/transcribe", {
           method: "POST",
@@ -47,17 +104,23 @@ export default function VideoEditor() {
           body: JSON.stringify({ videoUrl: url }),
         });
         if (!res.ok) {
-          throw new Error(await res.text());
+          const text = await res.text();
+          throw new Error(parseApiError(text));
         }
         const t: Transcript = await res.json();
         setTranscript(t);
+        pushToast(
+          "success",
+          `Transcribed · ${t.segments.length} segment${t.segments.length === 1 ? "" : "s"}`,
+        );
       } catch (err) {
-        console.error("Transcription failed", err);
+        const message = err instanceof Error ? err.message : "Transcription failed";
+        pushToast("error", `Transcription failed: ${message}`);
       } finally {
         setStatus("ready");
       }
     },
-    [],
+    [pushToast],
   );
 
   const handleSend = useCallback(
@@ -78,7 +141,10 @@ export default function VideoEditor() {
             transcript,
           }),
         });
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(parseApiError(text));
+        }
         const data: { reply: string; composition: VideoComposition } = await res.json();
 
         setMessages([
@@ -91,25 +157,26 @@ export default function VideoEditor() {
         ]);
         setComposition(data.composition);
       } catch (err) {
-        console.error("Chat failed", err);
+        const message = err instanceof Error ? err.message : "Chat failed";
+        pushToast("error", `Claude error: ${message}`);
         setMessages([
           ...nextMessages,
           {
             role: "assistant",
-            content:
-              "Sorry, I hit an error trying to update the composition. Try rephrasing?",
+            content: "Sorry, I hit an error updating the composition. Try rephrasing?",
           },
         ]);
       }
     },
-    [composition, messages, transcript],
+    [composition, messages, transcript, pushToast],
   );
 
   const handleExport = useCallback(async () => {
     if (!composition) return;
     setStatus("rendering");
-    setRenderError(null);
     setRenderedUrl(null);
+    setRenderStartedAt(Date.now());
+    setRenderElapsed(0);
 
     try {
       const res = await fetch("/api/video/render", {
@@ -117,18 +184,52 @@ export default function VideoEditor() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ composition }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(parseApiError(text));
+      }
       const data: { url: string } = await res.json();
       setRenderedUrl(data.url);
       setStatus("rendered");
+      pushToast("success", "Render complete — your video is ready to download.");
     } catch (err) {
-      setRenderError(err instanceof Error ? err.message : "Render failed");
+      const message = err instanceof Error ? err.message : "Render failed";
+      pushToast("error", `Render failed: ${message}`);
       setStatus("ready");
+    } finally {
+      setRenderStartedAt(null);
     }
-  }, [composition]);
+  }, [composition, pushToast]);
+
+  const handleUploadError = useCallback(
+    (message: string) => {
+      pushToast("error", message);
+      setStatus("idle");
+    },
+    [pushToast],
+  );
+
+  const uploadStatus: "idle" | "uploading" | "transcribing" | "ready" = useMemo(() => {
+    if (status === "idle" || status === "uploading") return status;
+    if (status === "transcribing") return "transcribing";
+    return "ready";
+  }, [status]);
 
   return (
     <div className="space-y-6">
+      {/* Toasts */}
+      {toasts.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-[60] flex max-w-sm flex-col gap-3">
+          {toasts.map((toast) => (
+            <ToastItem
+              key={toast.id}
+              toast={toast}
+              onDismiss={() => dismissToast(toast.id)}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Header */}
       <div className="surface-hero rounded-[2rem] border border-border p-6 md:p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -153,7 +254,7 @@ export default function VideoEditor() {
             {status === "rendering" ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
-                Rendering...
+                Rendering {renderElapsed}s
               </>
             ) : (
               <>
@@ -162,6 +263,17 @@ export default function VideoEditor() {
               </>
             )}
           </button>
+        </div>
+
+        {/* Pipeline status pills */}
+        <div className="mt-6 flex flex-wrap items-center gap-2">
+          {STATUS_STEPS.map((step) => (
+            <StatusPill
+              key={step.key}
+              label={step.label}
+              state={stateForStep(status, step.key)}
+            />
+          ))}
         </div>
 
         {renderedUrl && (
@@ -186,9 +298,21 @@ export default function VideoEditor() {
           </div>
         )}
 
-        {renderError && (
-          <div className="mt-4 rounded-2xl border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-            {renderError}
+        {status === "rendering" && (
+          <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+            <div className="flex items-center gap-3 p-3">
+              <Loader2 size={18} className="animate-spin text-white" />
+              <p className="flex-1 text-sm text-white">
+                Rendering on Vercel — this usually takes 30–120s for a 1–3 min clip.
+              </p>
+              <span className="text-xs font-bold tabular-nums text-white/70">
+                {renderElapsed}s elapsed
+              </span>
+            </div>
+            {/* Indeterminate animated bar */}
+            <div className="h-1 w-full overflow-hidden bg-white/10">
+              <div className="h-full w-1/3 animate-[slide_1.5s_ease-in-out_infinite] bg-primary" />
+            </div>
           </div>
         )}
       </div>
@@ -197,11 +321,9 @@ export default function VideoEditor() {
       <UploadPanel
         videoUrl={videoUrl}
         onUploaded={handleUploaded}
-        status={status === "idle" || status === "uploading"
-          ? status
-          : status === "transcribing"
-            ? "transcribing"
-            : "ready"}
+        onUploadStart={handleUploadStart}
+        onError={handleUploadError}
+        status={uploadStatus}
       />
 
       {/* Chat + Preview */}
@@ -225,9 +347,7 @@ export default function VideoEditor() {
           <div className="mt-3 space-y-1 text-xs text-muted-foreground">
             {transcript.segments.map((s) => (
               <p key={s.id}>
-                <span className="font-mono text-primary">
-                  {s.start.toFixed(2)}s
-                </span>{" "}
+                <span className="font-mono text-primary">{s.start.toFixed(2)}s</span>{" "}
                 {s.text.trim()}
               </p>
             ))}
@@ -236,4 +356,91 @@ export default function VideoEditor() {
       )}
     </div>
   );
+}
+
+function stateForStep(
+  current: Status,
+  step: Status,
+): "done" | "active" | "pending" {
+  const order: Status[] = [
+    "idle",
+    "uploading",
+    "transcribing",
+    "ready",
+    "rendering",
+    "rendered",
+  ];
+  const currentIdx = order.indexOf(current);
+  const stepIdx = order.indexOf(step);
+  if (currentIdx > stepIdx) return "done";
+  if (currentIdx === stepIdx) return "active";
+  return "pending";
+}
+
+function StatusPill({
+  label,
+  state,
+}: {
+  label: string;
+  state: "done" | "active" | "pending";
+}) {
+  const tones = {
+    done: "border-primary/40 bg-primary/10 text-primary",
+    active: "border-white/30 bg-white/15 text-white",
+    pending: "border-white/10 bg-white/5 text-white/40",
+  } as const;
+  const Icon = state === "done" ? Check : state === "active" ? Sparkles : Circle;
+  return (
+    <span
+      className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${tones[state]}`}
+    >
+      <Icon size={12} className={state === "active" ? "animate-pulse" : ""} />
+      {label}
+    </span>
+  );
+}
+
+function ToastItem({
+  toast,
+  onDismiss,
+}: {
+  toast: Toast;
+  onDismiss: () => void;
+}) {
+  const tones = {
+    error: "border-destructive/40 bg-destructive text-destructive-foreground",
+    success: "border-primary/40 bg-card text-foreground",
+    info: "border-border bg-card text-foreground",
+  } as const;
+  const Icon = toast.tone === "error" ? AlertCircle : Check;
+  return (
+    <div
+      className={`flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md animate-[slideInRight_200ms_ease-out] ${tones[toast.tone]}`}
+    >
+      <Icon size={18} className="mt-0.5 shrink-0" />
+      <p className="flex-1 text-sm font-semibold leading-relaxed">{toast.message}</p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="shrink-0 rounded-lg p-1 opacity-70 hover:bg-black/10 hover:opacity-100"
+        aria-label="Dismiss"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Our API routes return either JSON { error: "..." } or plain text.
+ * This normalizes both into a user-readable string.
+ */
+function parseApiError(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.error === "string") return parsed.error;
+  } catch {
+    // not JSON — fall through
+  }
+  return raw || "Unknown error";
 }

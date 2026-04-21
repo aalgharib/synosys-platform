@@ -15,6 +15,16 @@ export const maxDuration = 30;
  * See: https://vercel.com/docs/storage/vercel-blob/client-upload
  */
 export async function POST(request: Request): Promise<NextResponse> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return NextResponse.json(
+      {
+        error:
+          "Vercel Blob is not configured. Admin: create a Blob Store in the Vercel dashboard (Storage → Create Blob Store → connect to this project) and redeploy.",
+      },
+      { status: 500 },
+    );
+  }
+
   const body = (await request.json()) as HandleUploadBody;
 
   try {

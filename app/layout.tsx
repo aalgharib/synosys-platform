@@ -28,6 +28,13 @@ const themeInitScript = `
 export const metadata: Metadata = {
   title: "SynoSys Platform",
   description: "Internal campaign, creative, and lead workflow platform.",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
