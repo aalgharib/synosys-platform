@@ -43,7 +43,7 @@ Supported operations: `trim`, `cut`, `caption`, `title`, `zoom`.
 
 ## Current Limits
 
-- 60 seconds max input video (enforced client-side + checked server-side)
+- 3 minutes (180s) max input video — fast-path limit, comfortable under Vercel's 300s render timeout
 - 200MB max file size
 - Portrait 1080×1920 default (reels/TikTok format)
 - Single rendering pipeline (no job queue yet) — one export at a time per user

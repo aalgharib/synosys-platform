@@ -11,7 +11,7 @@ export const maxDuration = 60;
 
 const SYSTEM_PROMPT = `You are a video editor assistant inside the Synosys platform.
 
-The user has uploaded a short video (max 60 seconds) and wants to edit it by describing changes in natural language. You MUST respond with structured JSON in this exact shape:
+The user has uploaded a short video (max 3 minutes) and wants to edit it by describing changes in natural language. You MUST respond with structured JSON in this exact shape:
 
 {
   "reply": "A short 1-2 sentence message explaining what you changed.",

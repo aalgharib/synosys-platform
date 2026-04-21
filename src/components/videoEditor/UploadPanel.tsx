@@ -1,5 +1,6 @@
 "use client";
 
+import { upload } from "@vercel/blob/client";
 import { Upload, Loader2, Check } from "lucide-react";
 import { useRef, useState, type ChangeEvent } from "react";
 
@@ -25,39 +26,31 @@ export default function UploadPanel({
     setError(null);
     setProgress(0);
 
-    // Verify duration client-side (must be <= 60s)
+    // Verify duration client-side (must be <= 180s / 3 min for the fast path)
     const duration = await getVideoDuration(file);
-    if (duration > 61) {
-      setError(`Video is ${duration.toFixed(1)}s. Must be 60 seconds or less.`);
+    if (duration > 181) {
+      setError(
+        `Video is ${formatDuration(duration)}. Must be 3 minutes or less.`,
+      );
       return;
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
-
+    // Client-direct upload to Vercel Blob. The /api/video/upload route just
+    // hands out a signed token; the browser uploads the file bytes straight
+    // to Blob storage, bypassing the 4.5 MB serverless body limit.
     try {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/video/upload");
+      const safeName = `videos/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          setProgress(Math.round((e.loaded / e.total) * 100));
-        }
-      };
-
-      const result = await new Promise<{ url: string }>((resolve, reject) => {
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve(JSON.parse(xhr.responseText));
-          } else {
-            reject(new Error(xhr.responseText || "Upload failed"));
-          }
-        };
-        xhr.onerror = () => reject(new Error("Network error"));
-        xhr.send(formData);
+      const blob = await upload(safeName, file, {
+        access: "public",
+        handleUploadUrl: "/api/video/upload",
+        contentType: file.type || "video/mp4",
+        onUploadProgress: ({ percentage }) => {
+          setProgress(Math.round(percentage));
+        },
       });
 
-      onUploaded(result.url, duration);
+      onUploaded(blob.url, duration);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     }
@@ -120,7 +113,7 @@ export default function UploadPanel({
               Drop a video or click to upload
             </p>
             <p className="text-xs text-muted-foreground">
-              MP4, MOV, or WebM · 60 seconds max
+              MP4, MOV, or WebM · 3 minutes max
             </p>
           </>
         )}
@@ -137,6 +130,13 @@ export default function UploadPanel({
       )}
     </div>
   );
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds - m * 60);
+  return `${m}m ${s}s`;
 }
 
 function getVideoDuration(file: File): Promise<number> {
